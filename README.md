@@ -1,2 +1,2 @@
 # VulkanRenderEngine
-A simple render engine in vulkan written in C++
+A simple vulkan render engine written in C
