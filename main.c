@@ -1,104 +1,58 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-void createInstance(VkInstance* instance){
-	validationLayersEnabled = enableValidationLayers;
-	VkApplicationInfo appInfo{};
-	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	appInfo.pApplicationName = "Hello Triangle";
-	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.pEngineName = "No Engine";
-	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_0;
-	appInfo.pNext = nullptr;
-	
-	VkInstanceCreateInfo createInfo{};
-	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-	createInfo.pApplicationInfo = &appInfo;
+void create_instance(VkInstance* instance, int validation_layers){
+	VkInstanceCreateInfo create_info;
+	create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+	create_info.pApplicationInfo = NULL;
 
 	// Copying GLFW extensions as well as our custom extensions into a pp extension names array
-	uint32_t glfwExtensionCount = 0;
-	const char** glfwExtensions;
-	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-	const char* extension_name = "VK_KHR_get_physical_device_properties2";
-	uint32_t numExtensions = glfwExtensionCount+1;
-	char** global_extensions;
-	global_extensions = (char**)malloc(sizeof(char*)*(glfwExtensionCount+1));
-	memcpy(global_extensions, glfwExtensions, sizeof(char*)*glfwExtensionCount);
-	*(global_extensions + glfwExtensionCount) = (char*)malloc(strlen(extension_name) + 1);
-	memcpy(*(global_extensions + glfwExtensionCount), extension_name, strlen(extension_name) + 1);
-
-	printf("Global extensions:\n");
-	for(int i = 0; i < numExtensions; i++){
-		printf("%s\n", *(global_extensions + i));
-	}
-	printf("----------------\n");
-
-	createInfo.enabledExtensionCount = numExtensions;
-	createInfo.ppEnabledExtensionNames = global_extensions;
-	createInfo.enabledLayerCount = 0;
-
-	// Validation Layers
-	std::vector<const char*> layers = {
-		"VK_LAYER_KHRONOS_validation",
-	};
-
-	uint32_t numValidationLayers;
-	vkEnumerateInstanceLayerProperties(&numValidationLayers, nullptr);
-	VkLayerProperties* layerProperties = (VkLayerProperties*)malloc(sizeof(VkLayerProperties) * numValidationLayers);
-	vkEnumerateInstanceLayerProperties(&numValidationLayers, layerProperties);
-
-	// Check if requested validation layers in *layers* are supported
-	for(int j = 0; j < layers.size(); j++){
-		bool supported = false;
-		for(int i = 0; i < numValidationLayers; i++){
-			if(!strcmp(layerProperties[i].layerName, layers[j])){
-				supported = true;
-			}
-		}
-		if(!supported){
-			std::cout << "requested validation layer(s) not supported" << std::endl;
-		}
+	unsigned int glfw_extension_count = 0;
+	const char** glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
+	if(glfw_extensions == NULL){
+		printf("Failed to get glfw extensions\n");
 	}
 
-	if(enableValidationLayers){
-		createInfo.enabledLayerCount = layers.size();
-		createInfo.ppEnabledLayerNames = layers.data();
+	unsigned int total_extension_count = glfw_extension_count + 1;
+	const char** total_extensions = malloc(sizeof(const char*) * total_extension_count);
+	memcpy(total_extensions, glfw_extensions, sizeof(const char*) * glfw_extension_count);
+	total_extensions[total_extension_count - 1] = "VK_KHR_get_physical_device_properties2";
+	create_info.enabledExtensionCount = total_extension_count;
+	create_info.ppEnabledExtensionNames = total_extensions;
+	create_info.enabledLayerCount = 0;
+	create_info.flags = 0;
+	create_info.pNext = NULL;
+
+	const char* validation_layer_name = "VK_LAYER_KHRONOS_validation";
+
+	if(validation_layers){
+		create_info.enabledLayerCount = 1;
+		create_info.ppEnabledLayerNames = &validation_layer_name;
 	}
 
-	uint32_t extensionCount = 0;
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-	VkExtensionProperties* extensions = new VkExtensionProperties[extensionCount];
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions);
-
-	std::cout << extensionCount << " available extensions:\n";
-
-	for(int i = 0; i < extensionCount; i++){
-		std::cout << extensions[i].extensionName << std::endl;
+	if(vkCreateInstance(&create_info, NULL, instance) != VK_SUCCESS){
+		printf("Failed to create instance\n");
 	}
 
-	VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
-	if(result != VK_SUCCESS){
-		throw std::runtime_error("failed to create instance!");
-	}
-
-	free(layerProperties);
-	free(*(global_extensions + glfwExtensionCount));
-	free(global_extensions);
-	delete[] extensions;
+	free(total_extensions);
+	return 0;
 }
 
-int main(){
-	GLFWwindow* window = nullptr;
+int main(int argc, char** argvs){
+	GLFWwindow* window = NULL;
 	VkInstance instance;
-
-	glfwInit();
+	if(glfwInit() != GLFW_TRUE){
+		printf("Failed to initialize GLFW");
+	};
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-	window = glfwCreateWindow(width, height, title, nullptr, nullptr);
+	window = glfwCreateWindow(800, 600, "Our Vulkan Window", NULL, NULL);
 
-	createInstance();
+	create_instance(&instance, 1);
 
 	while(!glfwWindowShouldClose(window)){
 		glfwPollEvents();
@@ -106,4 +60,5 @@ int main(){
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
+	return 0;
 }
