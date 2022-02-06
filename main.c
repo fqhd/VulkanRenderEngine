@@ -105,11 +105,64 @@ void create_instance(VkInstance* instance, int validation_layers){
 	free(total_extensions);
 }
 
+void create_swapchain(const VkPhysicalDevice* physical_device, const VkDevice* logical_device, VkSurfaceKHR* surface, VkSwapchainKHR* swapchain){
+	// Get surface capabilities
+	VkSurfaceCapabilitiesKHR capabilities;
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(*physical_device, *surface, &capabilities);
+
+	// Get supported swapchain image formats
+	unsigned int format_count = 0;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(*physical_device, *surface, &format_count, NULL);
+	VkSurfaceFormatKHR* formats = malloc(sizeof(VkSurfaceFormatKHR) * format_count);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(*physical_device, *surface, &format_count, formats);
+
+	// Picking the right surface format
+	VkSurfaceFormatKHR format;
+	for(unsigned int i = 0; i < format_count; i++){
+		if(formats[i].format == VK_FORMAT_B8G8R8A8_SRGB && formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR){
+			format = formats[i];
+		}
+	}
+
+	VkExtent2D extent = capabilities.currentExtent;
+	VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
+
+	unsigned int image_count = capabilities.minImageCount + 1;
+	if(capabilities.maxImageCount > 0 && image_count > capabilities.maxImageCount){
+		image_count = capabilities.maxImageCount;
+	}
+
+	// Populate swapchain creation struct
+	VkSwapchainCreateInfoKHR swapchain_create_info;
+	swapchain_create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapchain_create_info.surface = *surface;
+	swapchain_create_info.minImageCount = image_count;
+	swapchain_create_info.imageExtent = extent;
+	swapchain_create_info.imageFormat = format.format;
+	swapchain_create_info.imageColorSpace = format.colorSpace;
+	swapchain_create_info.imageArrayLayers = 1;
+	swapchain_create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	swapchain_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	swapchain_create_info.preTransform = capabilities.currentTransform;
+	swapchain_create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	swapchain_create_info.presentMode = present_mode;
+	swapchain_create_info.clipped = VK_TRUE;
+	swapchain_create_info.oldSwapchain = VK_NULL_HANDLE;
+	swapchain_create_info.pNext = NULL;
+	swapchain_create_info.flags = 0;
+
+	if(vkCreateSwapchainKHR(*logical_device, &swapchain_create_info, NULL, swapchain) != VK_SUCCESS){
+		printf("Failed to create swapchain\n");
+	}
+}
+
 int main(int argc, char** argvs){
 	GLFWwindow* window = NULL;
 	VkInstance instance;
 	VkPhysicalDevice physical_device;
 	VkDevice logical_device;
+	VkSurfaceKHR surface;
+	VkSwapchainKHR swapchain;
 	int graphics_queue_index = 0;
 
 	if(glfwInit() != GLFW_TRUE){
@@ -124,6 +177,8 @@ int main(int argc, char** argvs){
 	pick_physical_device(&instance, &physical_device);
 	graphics_queue_index = get_graphics_queue(&physical_device);
 	create_logical_device(&physical_device, &logical_device, graphics_queue_index);
+	glfwCreateWindowSurface(instance, window, NULL, &surface);
+	create_swapchain(&physical_device, &logical_device, &surface, &swapchain);
 
 	while(!glfwWindowShouldClose(window)){
 		glfwPollEvents();
