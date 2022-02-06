@@ -4,4 +4,4 @@ VULKAN = -L/Users/fahd/VulkanSDK/1.2.198.1/macOS/lib -lvulkan -I/Users/fahd/Vulk
 CGLM = -I/opt/homebrew/Cellar/cglm/0.8.4/include
 
 out: main.c
-	${CC} main.c -std=c99 ${GLFW} ${VULKAN} ${CGLM} -O0 -o out
+	${CC} main.c -std=c99 ${GLFW} ${VULKAN} ${CGLM} -o out

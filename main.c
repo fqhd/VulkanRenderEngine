@@ -5,6 +5,70 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+void pick_physical_device(const VkInstance* instance, VkPhysicalDevice* physical_device){
+	unsigned int physical_device_count;
+	vkEnumeratePhysicalDevices(*instance, &physical_device_count, NULL);
+	VkPhysicalDevice* physical_devices = malloc(sizeof(VkPhysicalDeviceProperties) * physical_device_count);
+	vkEnumeratePhysicalDevices(*instance, &physical_device_count, physical_devices);
+
+	if(physical_device_count == 0){
+		printf("Error: Failed to get physical device\n");
+	}
+
+	*physical_device = *physical_devices;
+}
+
+int get_graphics_queue(const VkPhysicalDevice* physical_device){
+	unsigned int queue_family_count = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(*physical_device, &queue_family_count, NULL);
+	VkQueueFamilyProperties* queueFamilies = malloc(sizeof(VkQueueFamilyProperties) * queue_family_count);
+	if(queueFamilies == NULL){
+		printf("Failed to malloc space for queueFamilies\n");
+	}
+	vkGetPhysicalDeviceQueueFamilyProperties(*physical_device, &queue_family_count, queueFamilies);
+	if(queue_family_count == 0){
+		printf("Found no queue families in physical device\n");
+	}
+
+	for(unsigned int i = 0; i < queue_family_count; i++){
+		if(queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT){
+			return i;
+		}
+	}
+	return -1;
+}
+
+void create_logical_device(const VkPhysicalDevice* physical_device, VkDevice* logical_device, int graphics_queue_index){
+	// Information about the creation of the graphics queue
+	float priority = 1.0f;
+	VkDeviceQueueCreateInfo queue_create_info;
+	queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	queue_create_info.queueFamilyIndex = graphics_queue_index;
+	queue_create_info.queueCount = 1;
+	queue_create_info.pQueuePriorities = &priority;
+	queue_create_info.pNext = NULL;
+	queue_create_info.flags = 0;
+
+	VkDeviceCreateInfo device_create_info;
+	device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	device_create_info.pQueueCreateInfos = &queue_create_info;
+	device_create_info.queueCreateInfoCount = 1;
+	device_create_info.pEnabledFeatures = NULL;
+	device_create_info.enabledLayerCount = 0;
+	device_create_info.ppEnabledLayerNames = NULL;
+	device_create_info.enabledExtensionCount = 2;
+	const char* extension_names[2];
+	extension_names[0] = "VK_KHR_portability_subset";
+	extension_names[1] = "VK_KHR_swapchain";
+	device_create_info.ppEnabledExtensionNames = extension_names;
+	device_create_info.pNext = NULL;
+	device_create_info.flags = 0;
+
+	if(vkCreateDevice(*physical_device, &device_create_info, NULL, logical_device) != VK_SUCCESS){
+		printf("Failed to create device\n");
+	}
+}
+
 void create_instance(VkInstance* instance, int validation_layers){
 	VkInstanceCreateInfo create_info;
 	create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -39,12 +103,15 @@ void create_instance(VkInstance* instance, int validation_layers){
 	}
 
 	free(total_extensions);
-	return 0;
 }
 
 int main(int argc, char** argvs){
 	GLFWwindow* window = NULL;
 	VkInstance instance;
+	VkPhysicalDevice physical_device;
+	VkDevice logical_device;
+	int graphics_queue_index = 0;
+
 	if(glfwInit() != GLFW_TRUE){
 		printf("Failed to initialize GLFW");
 	};
@@ -52,7 +119,11 @@ int main(int argc, char** argvs){
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	window = glfwCreateWindow(800, 600, "Our Vulkan Window", NULL, NULL);
 
+	// Initializing vulkan
 	create_instance(&instance, 1);
+	pick_physical_device(&instance, &physical_device);
+	graphics_queue_index = get_graphics_queue(&physical_device);
+	create_logical_device(&physical_device, &logical_device, graphics_queue_index);
 
 	while(!glfwWindowShouldClose(window)){
 		glfwPollEvents();
