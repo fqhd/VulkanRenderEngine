@@ -161,12 +161,44 @@ void create_swapchain(const VkPhysicalDevice* physical_device, const VkDevice* l
 	free(formats);
 }
 
-void get_image_views(const VkDevice* logical_device, const VkSwapchainKHR* swapchain){
+VkImageView* get_image_views(const VkDevice* logical_device, const VkSwapchainKHR* swapchain){
 	unsigned int image_count;
 	vkGetSwapchainImagesKHR(*logical_device, *swapchain, &image_count, NULL);
 	VkImage* images = malloc(sizeof(VkImage) * image_count);
 	vkGetSwapchainImagesKHR(*logical_device, *swapchain, &image_count, images);
-	printf("There are %u images\n", image_count);
+
+	VkImageView* image_views = malloc(sizeof(VkImageView) * image_count);
+	if(image_views == NULL){
+		printf("Failed to allocate memory for image views\n");
+	}
+
+	for(unsigned int i = 0; i < image_count; i++){
+		VkImageViewCreateInfo create_info;
+		create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		create_info.image = images[i];
+		create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		create_info.format = VK_FORMAT_B8G8R8A8_SRGB;
+		create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+		create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		create_info.subresourceRange.baseMipLevel = 0;
+		create_info.subresourceRange.levelCount = 1;
+		create_info.subresourceRange.baseArrayLayer = 0;
+		create_info.subresourceRange.layerCount = 1;
+		create_info.pNext = NULL;
+		create_info.flags = 0;
+
+		if(vkCreateImageView(*logical_device, &create_info, NULL, image_views + i) != VK_SUCCESS){
+			printf("Falied creating image view\n");
+			return NULL;
+		}
+	}
+
+	return image_views;
+
 	free(images);
 }
 
@@ -177,6 +209,7 @@ int main(int argc, char** argvs){
 	VkDevice logical_device;
 	VkSurfaceKHR surface;
 	VkSwapchainKHR swapchain;
+	VkImageView* image_views;
 	
 	int graphics_queue_index = 0;
 
@@ -194,10 +227,13 @@ int main(int argc, char** argvs){
 	create_logical_device(&physical_device, &logical_device, graphics_queue_index);
 	glfwCreateWindowSurface(instance, window, NULL, &surface);
 	create_swapchain(&physical_device, &logical_device, &surface, &swapchain);
+	image_views = get_image_views(&logical_device, &swapchain);
 
 	while(!glfwWindowShouldClose(window)){
 		glfwPollEvents();
 	}
+
+	free(image_views);
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
