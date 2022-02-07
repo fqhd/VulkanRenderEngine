@@ -15,26 +15,29 @@ void pick_physical_device(const VkInstance* instance, VkPhysicalDevice* physical
 		printf("Error: Failed to get physical device\n");
 	}
 
-	*physical_device = *physical_devices;
+	*physical_device = physical_devices[0];
+	free(physical_devices);
 }
 
 int get_graphics_queue(const VkPhysicalDevice* physical_device){
 	unsigned int queue_family_count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(*physical_device, &queue_family_count, NULL);
-	VkQueueFamilyProperties* queueFamilies = malloc(sizeof(VkQueueFamilyProperties) * queue_family_count);
-	if(queueFamilies == NULL){
+	VkQueueFamilyProperties* queue_families = malloc(sizeof(VkQueueFamilyProperties) * queue_family_count);
+	if(queue_families == NULL){
 		printf("Failed to malloc space for queueFamilies\n");
 	}
-	vkGetPhysicalDeviceQueueFamilyProperties(*physical_device, &queue_family_count, queueFamilies);
+	vkGetPhysicalDeviceQueueFamilyProperties(*physical_device, &queue_family_count, queue_families);
 	if(queue_family_count == 0){
 		printf("Found no queue families in physical device\n");
 	}
 
 	for(unsigned int i = 0; i < queue_family_count; i++){
-		if(queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT){
+		if(queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT){
+			free(queue_families);
 			return i;
 		}
 	}
+	free(queue_families);
 	return -1;
 }
 
@@ -154,6 +157,17 @@ void create_swapchain(const VkPhysicalDevice* physical_device, const VkDevice* l
 	if(vkCreateSwapchainKHR(*logical_device, &swapchain_create_info, NULL, swapchain) != VK_SUCCESS){
 		printf("Failed to create swapchain\n");
 	}
+
+	free(formats);
+}
+
+void get_image_views(const VkDevice* logical_device, const VkSwapchainKHR* swapchain){
+	unsigned int image_count;
+	vkGetSwapchainImagesKHR(*logical_device, *swapchain, &image_count, NULL);
+	VkImage* images = malloc(sizeof(VkImage) * image_count);
+	vkGetSwapchainImagesKHR(*logical_device, *swapchain, &image_count, images);
+	printf("There are %u images\n", image_count);
+	free(images);
 }
 
 int main(int argc, char** argvs){
@@ -163,6 +177,7 @@ int main(int argc, char** argvs){
 	VkDevice logical_device;
 	VkSurfaceKHR surface;
 	VkSwapchainKHR swapchain;
+	
 	int graphics_queue_index = 0;
 
 	if(glfwInit() != GLFW_TRUE){
