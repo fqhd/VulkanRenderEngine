@@ -161,7 +161,7 @@ void create_swapchain(const VkPhysicalDevice* physical_device, const VkDevice* l
 	free(formats);
 }
 
-VkImageView* get_image_views(const VkDevice* logical_device, const VkSwapchainKHR* swapchain){
+VkImageView* create_image_views(const VkDevice* logical_device, const VkSwapchainKHR* swapchain){
 	unsigned int image_count;
 	vkGetSwapchainImagesKHR(*logical_device, *swapchain, &image_count, NULL);
 	VkImage* images = malloc(sizeof(VkImage) * image_count);
@@ -227,7 +227,7 @@ int main(int argc, char** argvs){
 	create_logical_device(&physical_device, &logical_device, graphics_queue_index);
 	glfwCreateWindowSurface(instance, window, NULL, &surface);
 	create_swapchain(&physical_device, &logical_device, &surface, &swapchain);
-	image_views = get_image_views(&logical_device, &swapchain);
+	image_views = create_image_views(&logical_device, &swapchain);
 
 	while(!glfwWindowShouldClose(window)){
 		glfwPollEvents();
