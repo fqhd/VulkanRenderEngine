@@ -203,6 +203,7 @@ void create_render_pass(const VkDevice* device, VkRenderPass* render_pass){
 	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	colorAttachment.flags = 0;
 
 	VkAttachmentReference colorAttachmentRef;
 	colorAttachmentRef.attachment = 0;
@@ -212,6 +213,13 @@ void create_render_pass(const VkDevice* device, VkRenderPass* render_pass){
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &colorAttachmentRef;
+	subpass.pDepthStencilAttachment = NULL;
+	subpass.flags = 0;
+	subpass.inputAttachmentCount = 0;
+	subpass.pInputAttachments = NULL;
+	subpass.pResolveAttachments = NULL;
+	subpass.preserveAttachmentCount = 0;
+	subpass.pPreserveAttachments = NULL;
 
 	VkRenderPassCreateInfo renderPassInfo;
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -219,6 +227,10 @@ void create_render_pass(const VkDevice* device, VkRenderPass* render_pass){
 	renderPassInfo.pAttachments = &colorAttachment;
 	renderPassInfo.subpassCount = 1;
 	renderPassInfo.pSubpasses = &subpass;
+	renderPassInfo.pNext = NULL;
+	renderPassInfo.flags = 0;
+	renderPassInfo.dependencyCount = 0;
+	renderPassInfo.pDependencies = NULL;
 
 	if (vkCreateRenderPass(*device, &renderPassInfo, NULL, render_pass) != VK_SUCCESS) {
 		printf("Failed to create render pass\n");
