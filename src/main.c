@@ -21,11 +21,11 @@ int main(int argc, char** argvs){
 	// Initializing vulkan
 	create_instance(&instance, 1);
 	pick_physical_device(&instance, &physical_device);
-	graphics_queue_index = get_graphics_queue(&physical_device);
+	get_graphics_queue(&physical_device, &graphics_queue_index);
 	create_logical_device(&physical_device, &logical_device, graphics_queue_index);
 	glfwCreateWindowSurface(instance, window, NULL, &surface);
 	create_swapchain(&physical_device, &logical_device, &surface, &swapchain);
-	image_views = create_image_views(&logical_device, &swapchain);
+	create_image_views(&logical_device, &swapchain, &image_views);
 
 	while(!glfwWindowShouldClose(window)){
 		glfwPollEvents();

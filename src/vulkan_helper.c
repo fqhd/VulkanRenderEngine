@@ -14,7 +14,7 @@ void pick_physical_device(const VkInstance* instance, VkPhysicalDevice* physical
 	free(physical_devices);
 }
 
-int get_graphics_queue(const VkPhysicalDevice* physical_device){
+void get_graphics_queue(const VkPhysicalDevice* physical_device, int* graphics_queue){
 	unsigned int queue_family_count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(*physical_device, &queue_family_count, NULL);
 	VkQueueFamilyProperties* queue_families = malloc(sizeof(VkQueueFamilyProperties) * queue_family_count);
@@ -28,12 +28,11 @@ int get_graphics_queue(const VkPhysicalDevice* physical_device){
 
 	for(unsigned int i = 0; i < queue_family_count; i++){
 		if(queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT){
-			free(queue_families);
-			return i;
+			*graphics_queue = i;
 		}
 	}
+	
 	free(queue_families);
-	return -1;
 }
 
 void create_logical_device(const VkPhysicalDevice* physical_device, VkDevice* logical_device, int graphics_queue_index){
@@ -156,14 +155,14 @@ void create_swapchain(const VkPhysicalDevice* physical_device, const VkDevice* l
 	free(formats);
 }
 
-VkImageView* create_image_views(const VkDevice* logical_device, const VkSwapchainKHR* swapchain){
+void create_image_views(const VkDevice* logical_device, const VkSwapchainKHR* swapchain, VkImageView** image_views){
 	unsigned int image_count;
 	vkGetSwapchainImagesKHR(*logical_device, *swapchain, &image_count, NULL);
 	VkImage* images = malloc(sizeof(VkImage) * image_count);
 	vkGetSwapchainImagesKHR(*logical_device, *swapchain, &image_count, images);
 
-	VkImageView* image_views = malloc(sizeof(VkImageView) * image_count);
-	if(image_views == NULL){
+	*image_views = malloc(sizeof(VkImageView) * image_count);
+	if(*image_views == NULL){
 		printf("Failed to allocate memory for image views\n");
 	}
 
@@ -186,13 +185,10 @@ VkImageView* create_image_views(const VkDevice* logical_device, const VkSwapchai
 		create_info.pNext = NULL;
 		create_info.flags = 0;
 
-		if(vkCreateImageView(*logical_device, &create_info, NULL, image_views + i) != VK_SUCCESS){
+		if(vkCreateImageView(*logical_device, &create_info, NULL, *image_views + i) != VK_SUCCESS){
 			printf("Falied creating image view\n");
-			return NULL;
 		}
 	}
-
-	return image_views;
 
 	free(images);
 }
