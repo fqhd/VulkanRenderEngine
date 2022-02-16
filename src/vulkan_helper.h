@@ -11,3 +11,4 @@ void create_logical_device(const VkPhysicalDevice* physical_device, VkDevice* lo
 void create_instance(VkInstance* instance, int validation_layers);
 void create_swapchain(const VkPhysicalDevice* physical_device, const VkDevice* logical_device, VkSurfaceKHR* surface, VkSwapchainKHR* swapchain);
 void create_image_views(const VkDevice* logical_device, const VkSwapchainKHR* swapchain, VkImageView** image_views);
+void create_render_pass(const VkDevice* device, VkRenderPass* render_pass);
