@@ -1,5 +1,34 @@
 #include "vulkan_helper.h"
 
+void destroy_vulkan(Vulkan* v){
+	vkDestroyCommandPool(v->logical_device, v->command_pool, NULL);
+
+	for (int i = 0; i < v->num_image_views; i++) {
+		vkDestroyFramebuffer(v->logical_device, v->framebuffers[i], NULL);
+	}
+
+	vkDestroyRenderPass(v->logical_device, v->render_pass, NULL);
+
+	vkDestroyPipeline(v->logical_device, v->graphics_pipeline, NULL);
+
+	vkDestroyPipelineLayout(v->logical_device, v->pipeline_layout, NULL);
+
+	for (int i = 0; i < v->num_image_views; i++) {
+		vkDestroyImageView(v->logical_device, v->image_views[i], NULL);
+	}
+
+	vkDestroySwapchainKHR(v->logical_device, v->swapchain, NULL);
+
+	vkDestroyDevice(v->logical_device, NULL);
+
+	vkDestroySurfaceKHR(v->instance, v->surface, NULL);
+
+	vkDestroyInstance(v->instance, NULL);
+
+	glfwDestroyWindow(v->window);
+	glfwTerminate();
+}
+
 VkShaderModule createShaderModule(const VkDevice* device, file_buffer buffer) {
 	VkShaderModuleCreateInfo createInfo;
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -18,13 +47,13 @@ VkShaderModule createShaderModule(const VkDevice* device, file_buffer buffer) {
 	return shaderModule;
 }
 
-void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, const VkRenderPass* render_pass, VkPipeline* graphics_pipeline, VkPipelineLayout* layout){
+void create_graphics_pipeline(Vulkan* v){
 	file_buffer vertShaderData = read_file("res/vert.spv");
 	file_buffer fragShaderData = read_file("res/frag.spv");
 
 	// Wrapping the shader bytecode into a VkShaderModule wrapper object
-	VkShaderModule vertShaderModule = createShaderModule(device, vertShaderData);
-	VkShaderModule fragShaderModule = createShaderModule(device, fragShaderData);
+	VkShaderModule vertShaderModule = createShaderModule(&v->logical_device, vertShaderData);
+	VkShaderModule fragShaderModule = createShaderModule(&v->logical_device, fragShaderData);
 
 	// Inserting the vertex shader into the pipeline
 	VkPipelineShaderStageCreateInfo vertShaderStageInfo;
@@ -70,8 +99,8 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 	VkViewport viewport;
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float) extent->width;
-	viewport.height = (float) extent->height;
+	viewport.width = (float) v->capabilities.currentExtent.width;
+	viewport.height = (float)v->capabilities.currentExtent.height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
@@ -79,7 +108,7 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 	VkRect2D scissor;
 	scissor.offset.x = 0;
 	scissor.offset.y = 0;
-	scissor.extent = *extent;
+	scissor.extent = v->capabilities.currentExtent;
 
 	// We must combine the viewport and scissor into 1 struct
 	VkPipelineViewportStateCreateInfo viewportState;
@@ -153,7 +182,7 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 	pipelineLayoutInfo.pNext = NULL; // Optional
 	pipelineLayoutInfo.flags = 0; // Optional
 
-	if (vkCreatePipelineLayout(*device, &pipelineLayoutInfo, NULL, layout) != VK_SUCCESS) {
+	if (vkCreatePipelineLayout(v->logical_device, &pipelineLayoutInfo, NULL, &v->pipeline_layout) != VK_SUCCESS) {
 		printf("Failed to create pipeline layout\n");
 	}
 
@@ -169,8 +198,8 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 	pipelineInfo.pDepthStencilState = NULL; // Optional
 	pipelineInfo.pColorBlendState = &colorBlending;
 	pipelineInfo.pDynamicState = NULL; // Optional
-	pipelineInfo.layout = *layout;
-	pipelineInfo.renderPass = *render_pass;
+	pipelineInfo.layout = v->pipeline_layout;
+	pipelineInfo.renderPass = v->render_pass;
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
 	pipelineInfo.basePipelineIndex = -1; // Optional
@@ -178,56 +207,56 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 	pipelineInfo.flags = 0;
 
 	// Finally creating the actual pipeline
-	if (vkCreateGraphicsPipelines(*device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, graphics_pipeline) != VK_SUCCESS) {
+	if (vkCreateGraphicsPipelines(v->logical_device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &v->graphics_pipeline) != VK_SUCCESS) {
 		printf("Failed to create graphics pipeline\n");
 	}
 
 	// Don't need the shaders after pipeline creation is complete
-	vkDestroyShaderModule(*device, fragShaderModule, NULL);
-	vkDestroyShaderModule(*device, vertShaderModule, NULL);
+	vkDestroyShaderModule(v->logical_device, fragShaderModule, NULL);
+	vkDestroyShaderModule(v->logical_device, vertShaderModule, NULL);
 }
 
-void pick_physical_device(const VkInstance* instance, VkPhysicalDevice* physical_device){
+void pick_physical_device(Vulkan* v){
 	unsigned int physical_device_count;
-	vkEnumeratePhysicalDevices(*instance, &physical_device_count, NULL);
+	vkEnumeratePhysicalDevices(v->instance, &physical_device_count, NULL);
 	VkPhysicalDevice* physical_devices = malloc(sizeof(VkPhysicalDeviceProperties) * physical_device_count);
-	vkEnumeratePhysicalDevices(*instance, &physical_device_count, physical_devices);
+	vkEnumeratePhysicalDevices(v->instance, &physical_device_count, physical_devices);
 
 	if(physical_device_count == 0){
 		printf("Error: Failed to get physical device\n");
 	}
 
-	*physical_device = physical_devices[0];
+	v->physical_device = physical_devices[0];
 	free(physical_devices);
 }
 
-void get_graphics_queue(const VkPhysicalDevice* physical_device, int* graphics_queue){
+void get_graphics_queue(Vulkan* v){
 	unsigned int queue_family_count = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(*physical_device, &queue_family_count, NULL);
+	vkGetPhysicalDeviceQueueFamilyProperties(v->physical_device, &queue_family_count, NULL);
 	VkQueueFamilyProperties* queue_families = malloc(sizeof(VkQueueFamilyProperties) * queue_family_count);
 	if(queue_families == NULL){
 		printf("Failed to malloc space for queueFamilies\n");
 	}
-	vkGetPhysicalDeviceQueueFamilyProperties(*physical_device, &queue_family_count, queue_families);
+	vkGetPhysicalDeviceQueueFamilyProperties(v->physical_device, &queue_family_count, queue_families);
 	if(queue_family_count == 0){
 		printf("Found no queue families in physical device\n");
 	}
 
 	for(unsigned int i = 0; i < queue_family_count; i++){
 		if(queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT){
-			*graphics_queue = i;
+			v->graphics_queue_index = i;
 		}
 	}
 	
 	free(queue_families);
 }
 
-void create_logical_device(const VkPhysicalDevice* physical_device, VkDevice* logical_device, int graphics_queue_index){
+void create_logical_device(Vulkan* v){
 	// Information about the creation of the graphics queue
 	float priority = 1.0f;
 	VkDeviceQueueCreateInfo queue_create_info;
 	queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queue_create_info.queueFamilyIndex = graphics_queue_index;
+	queue_create_info.queueFamilyIndex = v->graphics_queue_index;
 	queue_create_info.queueCount = 1;
 	queue_create_info.pQueuePriorities = &priority;
 	queue_create_info.pNext = NULL;
@@ -248,12 +277,12 @@ void create_logical_device(const VkPhysicalDevice* physical_device, VkDevice* lo
 	device_create_info.pNext = NULL;
 	device_create_info.flags = 0;
 
-	if(vkCreateDevice(*physical_device, &device_create_info, NULL, logical_device) != VK_SUCCESS){
+	if(vkCreateDevice(v->physical_device, &device_create_info, NULL, &v->logical_device) != VK_SUCCESS){
 		printf("Failed to create device\n");
 	}
 }
 
-void create_instance(VkInstance* instance, int validation_layers){
+void create_instance(Vulkan* v, int validation_layers){
 	VkInstanceCreateInfo create_info;
 	create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	create_info.pApplicationInfo = NULL;
@@ -282,22 +311,22 @@ void create_instance(VkInstance* instance, int validation_layers){
 		create_info.ppEnabledLayerNames = &validation_layer_name;
 	}
 
-	if(vkCreateInstance(&create_info, NULL, instance) != VK_SUCCESS){
+	if(vkCreateInstance(&create_info, NULL, &v->instance) != VK_SUCCESS){
 		printf("Failed to create instance\n");
 	}
 
 	free(total_extensions);
 }
 
-void create_swapchain(const VkPhysicalDevice* physical_device, const VkDevice* logical_device, VkSurfaceKHR* surface, VkSwapchainKHR* swapchain, VkSurfaceCapabilitiesKHR* capabilities){
+void create_swapchain(Vulkan* v){
 	// Get surface capabilities
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(*physical_device, *surface, capabilities);
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(v->physical_device, v->surface, &v->capabilities);
 
 	// Get supported swapchain image formats
 	unsigned int format_count = 0;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(*physical_device, *surface, &format_count, NULL);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(v->physical_device, v->surface, &format_count, NULL);
 	VkSurfaceFormatKHR* formats = malloc(sizeof(VkSurfaceFormatKHR) * format_count);
-	vkGetPhysicalDeviceSurfaceFormatsKHR(*physical_device, *surface, &format_count, formats);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(v->physical_device, v->surface, &format_count, formats);
 
 	// Picking the right surface format
 	VkSurfaceFormatKHR format;
@@ -307,18 +336,18 @@ void create_swapchain(const VkPhysicalDevice* physical_device, const VkDevice* l
 		}
 	}
 
-	VkExtent2D extent = capabilities->currentExtent;
+	VkExtent2D extent = v->capabilities.currentExtent;
 	VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
 
-	unsigned int image_count = capabilities->minImageCount + 1;
-	if(capabilities->maxImageCount > 0 && image_count > capabilities->maxImageCount){
-		image_count = capabilities->maxImageCount;
+	unsigned int image_count = v->capabilities.minImageCount + 1;
+	if(v->capabilities.maxImageCount > 0 && image_count > v->capabilities.maxImageCount){
+		image_count = v->capabilities.maxImageCount;
 	}
 
 	// Populate swapchain creation struct
 	VkSwapchainCreateInfoKHR swapchain_create_info;
 	swapchain_create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	swapchain_create_info.surface = *surface;
+	swapchain_create_info.surface = v->surface;
 	swapchain_create_info.minImageCount = image_count;
 	swapchain_create_info.imageExtent = extent;
 	swapchain_create_info.imageFormat = format.format;
@@ -326,7 +355,7 @@ void create_swapchain(const VkPhysicalDevice* physical_device, const VkDevice* l
 	swapchain_create_info.imageArrayLayers = 1;
 	swapchain_create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	swapchain_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	swapchain_create_info.preTransform = capabilities->currentTransform;
+	swapchain_create_info.preTransform = v->capabilities.currentTransform;
 	swapchain_create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	swapchain_create_info.presentMode = present_mode;
 	swapchain_create_info.clipped = VK_TRUE;
@@ -334,24 +363,21 @@ void create_swapchain(const VkPhysicalDevice* physical_device, const VkDevice* l
 	swapchain_create_info.pNext = NULL;
 	swapchain_create_info.flags = 0;
 
-	if(vkCreateSwapchainKHR(*logical_device, &swapchain_create_info, NULL, swapchain) != VK_SUCCESS){
+	if(vkCreateSwapchainKHR(v->logical_device, &swapchain_create_info, NULL, &v->swapchain) != VK_SUCCESS){
 		printf("Failed to create swapchain\n");
 	}
 
 	free(formats);
 }
 
-void create_image_views(const VkDevice* logical_device, const VkSwapchainKHR* swapchain, VkImageView** image_views, int* num_image_views){
+void create_image_views(Vulkan* v){
 	unsigned int image_count;
-	vkGetSwapchainImagesKHR(*logical_device, *swapchain, &image_count, NULL);
+	vkGetSwapchainImagesKHR(v->logical_device, v->swapchain, &image_count, NULL);
 	VkImage* images = malloc(sizeof(VkImage) * image_count);
-	vkGetSwapchainImagesKHR(*logical_device, *swapchain, &image_count, images);
-	*num_image_views = image_count;
+	vkGetSwapchainImagesKHR(v->logical_device, v->swapchain, &image_count, images);
+	v->num_image_views = image_count;
 
-	*image_views = malloc(sizeof(VkImageView) * image_count);
-	if(*image_views == NULL){
-		printf("Failed to allocate memory for image views\n");
-	}
+	v->image_views = malloc(sizeof(VkImageView) * image_count);
 
 	for(unsigned int i = 0; i < image_count; i++){
 		VkImageViewCreateInfo create_info;
@@ -372,7 +398,7 @@ void create_image_views(const VkDevice* logical_device, const VkSwapchainKHR* sw
 		create_info.pNext = NULL;
 		create_info.flags = 0;
 
-		if(vkCreateImageView(*logical_device, &create_info, NULL, *image_views + i) != VK_SUCCESS){
+		if(vkCreateImageView(v->logical_device, &create_info, NULL, &v->image_views[i]) != VK_SUCCESS){
 			printf("Falied creating image view\n");
 		}
 	}
@@ -380,7 +406,7 @@ void create_image_views(const VkDevice* logical_device, const VkSwapchainKHR* sw
 	free(images);
 }
 
-void create_render_pass(const VkDevice* device, VkRenderPass* render_pass){
+void create_render_pass(Vulkan* v){
 	VkAttachmentDescription colorAttachment;
 	colorAttachment.format = VK_FORMAT_B8G8R8A8_SRGB;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -419,94 +445,95 @@ void create_render_pass(const VkDevice* device, VkRenderPass* render_pass){
 	renderPassInfo.dependencyCount = 0;
 	renderPassInfo.pDependencies = NULL;
 
-	if (vkCreateRenderPass(*device, &renderPassInfo, NULL, render_pass) != VK_SUCCESS) {
+	if (vkCreateRenderPass(v->logical_device, &renderPassInfo, NULL, &v->render_pass) != VK_SUCCESS) {
 		printf("Failed to create render pass\n");
 	}
 }
 
-void create_framebuffers(VkFramebuffer** framebuffers, const VkImageView* image_views, int num_image_views, const VkRenderPass* render_pass, const VkSurfaceCapabilitiesKHR* capabilities, const VkDevice* device){
-	*framebuffers = malloc(sizeof(VkFramebuffer) * num_image_views);
+void create_framebuffers(Vulkan* v){
+	v->framebuffers = malloc(sizeof(VkFramebuffer) * v->num_image_views);
 
-	for (int i = 0; i < num_image_views; i++) {
+	for (int i = 0; i < v->num_image_views; i++) {
 		VkImageView attachments[] = {
-			image_views[i]
+			v->image_views[i]
 		};
 
 		VkFramebufferCreateInfo framebufferInfo;
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = *render_pass;
+		framebufferInfo.renderPass = v->render_pass;
 		framebufferInfo.attachmentCount = 1;
 		framebufferInfo.pAttachments = attachments;
-		framebufferInfo.width = capabilities->currentExtent.width;
-		framebufferInfo.height = capabilities->currentExtent.height;
+		framebufferInfo.width = v->capabilities.currentExtent.width;
+		framebufferInfo.height = v->capabilities.currentExtent.height;
 		framebufferInfo.layers = 1;
 		framebufferInfo.pNext = NULL;
 		framebufferInfo.flags = 0;
 
-		if (vkCreateFramebuffer(*device, &framebufferInfo, NULL, &(*framebuffers)[i]) != VK_SUCCESS) {
+		if (vkCreateFramebuffer(v->logical_device, &framebufferInfo, NULL, &(v->framebuffers)[i]) != VK_SUCCESS) {
 			err("Failed to create framebuffer");
 		}
 	}
 }
 
-void create_command_pool(const VkDevice* device, int graphics_queue_index, VkCommandPool* pool){
+void create_command_pool(Vulkan* v){
 	VkCommandPoolCreateInfo poolInfo;
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	poolInfo.queueFamilyIndex = graphics_queue_index;
+	poolInfo.queueFamilyIndex = v->graphics_queue_index;
 	poolInfo.flags = 0; // Optional
 	poolInfo.pNext = NULL;
 
-	if (vkCreateCommandPool(*device, &poolInfo, NULL, pool) != VK_SUCCESS) {
+	if (vkCreateCommandPool(v->logical_device, &poolInfo, NULL, &v->command_pool) != VK_SUCCESS) {
 		err("Failed to create command pool");
 	}
 }
 
-void create_command_buffers(const VkDevice* device, int num_swapchain_mages, const VkCommandPool* command_pool, const VkPipeline* graphics_pipeline, const VkSurfaceCapabilitiesKHR* capabilities, const VkRenderPass* render_pass, const VkFramebuffer* framebuffers, VkCommandBuffer* command_buffers) {
+void create_command_buffers(Vulkan* v) {
 		// Creating the command buffers
-		command_buffers = malloc(sizeof(VkCommandBuffer) * num_swapchain_mages);
+		v->command_buffers = malloc(sizeof(VkCommandBuffer) * v->num_image_views);
 		VkCommandBufferAllocateInfo allocInfo;
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.commandPool = *command_pool;
+		allocInfo.commandPool = v->command_pool;
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandBufferCount = num_swapchain_mages;
+		allocInfo.commandBufferCount = v->num_image_views;
+		allocInfo.pNext = NULL;
 
-		if (vkAllocateCommandBuffers(*device, &allocInfo, command_buffers) != VK_SUCCESS) {
+		if (vkAllocateCommandBuffers(v->logical_device, &allocInfo, v->command_buffers) != VK_SUCCESS) {
 			err("Failed to allocate command buffer");
 		}
 
 		// Recording data into the command buffers
-		for (size_t i = 0; i < num_swapchain_mages; i++) {
+		for (size_t i = 0; i < v->num_image_views; i++) {
 			VkCommandBufferBeginInfo beginInfo;
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			beginInfo.flags = 0; // Optional
 			beginInfo.pInheritanceInfo = NULL; // Optional
 			beginInfo.pNext = NULL;
 
-			if (vkBeginCommandBuffer(command_buffers[i], &beginInfo) != VK_SUCCESS) {
+			if (vkBeginCommandBuffer(v->command_buffers[i], &beginInfo) != VK_SUCCESS) {
 				err("Failed to begin recording command buffer");
 			}
 
 			VkRenderPassBeginInfo renderPassInfo;
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassInfo.renderPass = *render_pass;
-			renderPassInfo.framebuffer = framebuffers[i];
+			renderPassInfo.renderPass = v->render_pass;
+			renderPassInfo.framebuffer = v->framebuffers[i];
 			renderPassInfo.renderArea.offset.x = 0;
 			renderPassInfo.renderArea.offset.y = 0;
-			renderPassInfo.renderArea.extent = capabilities->currentExtent;
+			renderPassInfo.renderArea.extent = v->capabilities.currentExtent;
 			VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
 			renderPassInfo.clearValueCount = 1;
 			renderPassInfo.pClearValues = &clearColor;
 			renderPassInfo.pNext = NULL;
 
-			vkCmdBeginRenderPass(command_buffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+			vkCmdBeginRenderPass(v->command_buffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, *graphics_pipeline);
+			vkCmdBindPipeline(v->command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, v->graphics_pipeline);
 
-			vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
+			vkCmdDraw(v->command_buffers[i], 3, 1, 0, 0);
 
-			vkCmdEndRenderPass(command_buffers[i]);
+			vkCmdEndRenderPass(v->command_buffers[i]);
 
-			if (vkEndCommandBuffer(command_buffers[i]) != VK_SUCCESS) {
+			if (vkEndCommandBuffer(v->command_buffers[i]) != VK_SUCCESS) {
 				err("Failed to record command buffer");
 			}
 		}

@@ -9,16 +9,36 @@
 #include <GLFW/glfw3.h>
 #include "utils.h"
 
-void pick_physical_device(const VkInstance* instance, VkPhysicalDevice* physical_device);
-void get_graphics_queue(const VkPhysicalDevice* physical_device, int* graphics_queue_index);
-void create_logical_device(const VkPhysicalDevice* physical_device, VkDevice* logical_device, int graphics_queue_index);
-void create_instance(VkInstance* instance, int validation_layers);
-void create_swapchain(const VkPhysicalDevice* physical_device, const VkDevice* logical_device, VkSurfaceKHR* surface, VkSwapchainKHR* swapchai, VkSurfaceCapabilitiesKHR* capabilities);
-void create_image_views(const VkDevice* logical_device, const VkSwapchainKHR* swapchain, VkImageView** image_views, int* num_image_views);
-void create_render_pass(const VkDevice* device, VkRenderPass* render_pass);
-void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, const VkRenderPass* render_pass, VkPipeline* graphics_pipeline, VkPipelineLayout* layout);
-void create_framebuffers(VkFramebuffer** framebuffers, const VkImageView* image_views, int num_image_views, const VkRenderPass* render_pass, const VkSurfaceCapabilitiesKHR* capabilities, const VkDevice* device);
-void create_command_pool(const VkDevice* device, int graphics_queue_index, VkCommandPool* pool);
-void create_command_buffers(const VkDevice* device, int num_swapchain_mages, const VkCommandPool* command_pool, const VkPipeline* graphics_pipeline, const VkSurfaceCapabilitiesKHR* capabilities, const VkRenderPass* render_pass, const VkFramebuffer* framebuffers, VkCommandBuffer* command_buffers);
+typedef struct {
+	GLFWwindow* window;
+	VkInstance instance;
+	VkPhysicalDevice physical_device;
+	VkDevice logical_device;
+	VkSurfaceKHR surface;
+	VkSwapchainKHR swapchain;
+	VkImageView* image_views;
+	VkRenderPass render_pass;
+	VkSurfaceCapabilitiesKHR capabilities;
+	VkFramebuffer* framebuffers;
+	VkCommandPool command_pool;
+	VkPipeline graphics_pipeline;
+	VkCommandBuffer* command_buffers;
+	VkPipelineLayout pipeline_layout;
+	int graphics_queue_index;
+	int num_image_views;
+} Vulkan;
+
+void pick_physical_device(Vulkan* v);
+void get_graphics_queue(Vulkan* v);
+void create_logical_device(Vulkan* v);
+void create_instance(Vulkan* v, int validation_layers);
+void create_swapchain(Vulkan* v);
+void create_image_views(Vulkan* v);
+void create_render_pass(Vulkan* v);
+void create_graphics_pipeline(Vulkan* v);
+void create_framebuffers(Vulkan* v);
+void create_command_pool(Vulkan* v);
+void create_command_buffers(Vulkan* v);
+void destroy_vulkan(Vulkan* v);
 
 #endif

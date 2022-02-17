@@ -5,7 +5,7 @@ int main(int argc, char** argvs){
 
 	init_renderer(&renderer);
 
-	while(!glfwWindowShouldClose(renderer.window)){
+	while(!glfwWindowShouldClose(renderer.vulkan.window)){
 		glfwPollEvents();
 	}
 
