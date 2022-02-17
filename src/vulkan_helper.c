@@ -18,7 +18,7 @@ VkShaderModule createShaderModule(const VkDevice* device, file_buffer buffer) {
 	return shaderModule;
 }
 
-void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, const VkRenderPass* render_pass, VkPipeline* graphics_pipeline){
+void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, const VkRenderPass* render_pass, VkPipeline* graphics_pipeline, VkPipelineLayout* layout){
 	file_buffer vertShaderData = read_file("res/vert.spv");
 	file_buffer fragShaderData = read_file("res/frag.spv");
 
@@ -153,9 +153,7 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 	pipelineLayoutInfo.pNext = NULL; // Optional
 	pipelineLayoutInfo.flags = 0; // Optional
 
-	VkPipelineLayout pipeline_layout;
-
-	if (vkCreatePipelineLayout(*device, &pipelineLayoutInfo, NULL, &pipeline_layout) != VK_SUCCESS) {
+	if (vkCreatePipelineLayout(*device, &pipelineLayoutInfo, NULL, layout) != VK_SUCCESS) {
 		printf("Failed to create pipeline layout\n");
 	}
 
@@ -171,7 +169,7 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 	pipelineInfo.pDepthStencilState = NULL; // Optional
 	pipelineInfo.pColorBlendState = &colorBlending;
 	pipelineInfo.pDynamicState = NULL; // Optional
-	pipelineInfo.layout = pipeline_layout;
+	pipelineInfo.layout = *layout;
 	pipelineInfo.renderPass = *render_pass;
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional

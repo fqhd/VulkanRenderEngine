@@ -3,13 +3,12 @@
 int main(int argc, char** argvs){
 	Renderer renderer;
 
-	init_vulkan(&renderer);
+	init_renderer(&renderer);
 
 	while(!glfwWindowShouldClose(renderer.window)){
 		glfwPollEvents();
 	}
 
-	glfwDestroyWindow(renderer.window);
-	glfwTerminate();
+	destroy_renderer(&renderer);
 	return 0;
 }

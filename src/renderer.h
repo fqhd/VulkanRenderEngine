@@ -17,10 +17,12 @@ typedef struct {
 	VkCommandPool command_pool;
 	VkPipeline graphics_pipeline;
 	VkCommandBuffer* command_buffers;
+	VkPipelineLayout pipeline_layout;
 	int graphics_queue_index;
 	int num_image_views;
 } Renderer;
 
-void init_vulkan(Renderer* renderer);
+void init_renderer(Renderer* renderer);
+void destroy_renderer(Renderer* renderer);
 
 #endif
