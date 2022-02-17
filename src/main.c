@@ -10,8 +10,9 @@ int main(int argc, char** argvs){
 	VkImageView* image_views;
 	VkRenderPass render_pass;
 	VkSurfaceCapabilitiesKHR capabilities;
-	
+	VkFramebuffer* framebuffers;
 	int graphics_queue_index = 0;
+	int num_image_views;
 
 	if(glfwInit() != GLFW_TRUE){
 		printf("Failed to initialize GLFW");
@@ -27,9 +28,10 @@ int main(int argc, char** argvs){
 	create_logical_device(&physical_device, &logical_device, graphics_queue_index);
 	glfwCreateWindowSurface(instance, window, NULL, &surface);
 	create_swapchain(&physical_device, &logical_device, &surface, &swapchain, &capabilities);
-	create_image_views(&logical_device, &swapchain, &image_views);
+	create_image_views(&logical_device, &swapchain, &image_views, &num_image_views);
 	create_render_pass(&logical_device, &render_pass);
 	create_graphics_pipeline(&logical_device, &capabilities.currentExtent, &render_pass);
+	create_framebuffers(framebuffers, image_views, num_image_views, &render_pass, &capabilities, &logical_device);
 
 	while(!glfwWindowShouldClose(window)){
 		glfwPollEvents();
