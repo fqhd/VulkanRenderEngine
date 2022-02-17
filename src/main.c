@@ -9,6 +9,7 @@ int main(int argc, char** argvs){
 	VkSwapchainKHR swapchain;
 	VkImageView* image_views;
 	VkRenderPass render_pass;
+	VkSurfaceCapabilitiesKHR capabilities;
 	
 	int graphics_queue_index = 0;
 
@@ -25,9 +26,10 @@ int main(int argc, char** argvs){
 	get_graphics_queue(&physical_device, &graphics_queue_index);
 	create_logical_device(&physical_device, &logical_device, graphics_queue_index);
 	glfwCreateWindowSurface(instance, window, NULL, &surface);
-	create_swapchain(&physical_device, &logical_device, &surface, &swapchain);
+	create_swapchain(&physical_device, &logical_device, &surface, &swapchain, &capabilities);
 	create_image_views(&logical_device, &swapchain, &image_views);
 	create_render_pass(&logical_device, &render_pass);
+	create_graphics_pipeline(&logical_device, &capabilities.currentExtent, &render_pass);
 
 	while(!glfwWindowShouldClose(window)){
 		glfwPollEvents();

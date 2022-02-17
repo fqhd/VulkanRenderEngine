@@ -1,6 +1,6 @@
 #include "utils.h"
 
-file_buffer read_file_binary(const char* file_path){
+file_buffer read_file(const char* file_path){
 	FILE* file = fopen(file_path, "rb");
 	int file_size = fseek(file, 0, SEEK_END);
 	fseek(file, 0, SEEK_SET);
@@ -11,7 +11,7 @@ file_buffer read_file_binary(const char* file_path){
 	return f;
 }
 
-file_buffer free_file(file_buffer* buffer){
+void free_file(file_buffer* buffer){
 	free(buffer->data);
 	buffer->data = NULL;
 	buffer->size = 0;

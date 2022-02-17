@@ -7,4 +7,4 @@ typedef struct {
 } file_buffer;
 
 file_buffer read_file(const char* file_path);
-file_buffer free_file(file_buffer* buffer);
+void free_file(file_buffer* buffer);

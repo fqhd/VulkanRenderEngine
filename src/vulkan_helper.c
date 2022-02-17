@@ -1,5 +1,171 @@
 #include "vulkan_helper.h"
 
+VkShaderModule createShaderModule(const VkDevice* device, file_buffer buffer) {
+	VkShaderModuleCreateInfo createInfo;
+	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	createInfo.codeSize = buffer.size;
+	createInfo.pCode = (void*)buffer.data;
+
+	VkShaderModule shaderModule;
+	if (vkCreateShaderModule(*device, &createInfo, NULL, &shaderModule) != VK_SUCCESS) {
+		printf("Failed to create shader module\n");
+	}
+
+	free_file(&buffer);
+
+	return shaderModule;
+}
+
+void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, const VkRenderPass* render_pass){
+	file_buffer vertShaderData = read_file("res/vert.spv");
+	file_buffer fragShaderData = read_file("res/frag.spv");
+
+	// Wrapping the shader bytecode into a VkShaderModule wrapper object
+	VkShaderModule vertShaderModule = createShaderModule(device, vertShaderData);
+	VkShaderModule fragShaderModule = createShaderModule(device, fragShaderData);
+
+	// Inserting the vertex shader into the pipeline
+	VkPipelineShaderStageCreateInfo vertShaderStageInfo;
+	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertShaderStageInfo.module = vertShaderModule;
+	vertShaderStageInfo.pName = "main";
+
+	// Inserting the fragment shader into the pipeline
+	VkPipelineShaderStageCreateInfo fragShaderStageInfo;
+	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragShaderStageInfo.module = fragShaderModule;
+	fragShaderStageInfo.pName = "main";
+	fragShaderStageInfo.pNext = NULL;
+	fragShaderStageInfo.pSpecializationInfo = NULL;
+
+	VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+	
+	// Describing the vertex data
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo;
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.vertexBindingDescriptionCount = 0;
+	vertexInputInfo.pVertexBindingDescriptions = NULL; // Optional
+	vertexInputInfo.vertexAttributeDescriptionCount = 0;
+	vertexInputInfo.pVertexAttributeDescriptions = NULL; // Optional
+
+	// Setting the type of rendering(triangle strip, line, line strip etc)
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly;
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+	// Setting up the viewport
+	VkViewport viewport;
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float) extent->width;
+	viewport.height = (float) extent->height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	// Setting up the scissors
+	VkRect2D scissor;
+	scissor.offset.x = 0;
+	scissor.offset.y = 0;
+	scissor.extent = *extent;
+
+	// We must combine the viewport and scissor into 1 struct
+	VkPipelineViewportStateCreateInfo viewportState;
+	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportState.viewportCount = 1;
+	viewportState.pViewports = &viewport;
+	viewportState.scissorCount = 1;
+	viewportState.pScissors = &scissor;
+
+	// Setting up the rasterization stage
+	VkPipelineRasterizationStateCreateInfo rasterizer;
+	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rasterizer.depthClampEnable = VK_FALSE;
+	rasterizer.rasterizerDiscardEnable = VK_FALSE;
+	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+	rasterizer.lineWidth = 1.0f;
+	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizer.depthBiasEnable = VK_FALSE;
+	rasterizer.depthBiasConstantFactor = 0.0f; // Optional
+	rasterizer.depthBiasClamp = 0.0f; // Optional
+	rasterizer.depthBiasSlopeFactor = 0.0f; // Optional
+
+	// Setting up the color blending from the fragment shader and framebuffer
+	VkPipelineMultisampleStateCreateInfo multisampling;
+	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampling.sampleShadingEnable = VK_FALSE;
+	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampling.minSampleShading = 1.0f; // Optional
+	multisampling.pSampleMask = NULL; // Optional
+	multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
+	multisampling.alphaToOneEnable = VK_FALSE; // Optional
+
+	// Color blending parameters per framebuffer
+	VkPipelineColorBlendAttachmentState colorBlendAttachment;
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.blendEnable = VK_FALSE;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
+	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
+	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; // Optional
+	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
+	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
+	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; // Optional
+
+	VkPipelineColorBlendStateCreateInfo colorBlending;
+	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	colorBlending.logicOpEnable = VK_FALSE;
+	colorBlending.logicOp = VK_LOGIC_OP_COPY; // Optional
+	colorBlending.attachmentCount = 1;
+	colorBlending.pAttachments = &colorBlendAttachment;
+	colorBlending.blendConstants[0] = 0.0f; // Optional
+	colorBlending.blendConstants[1] = 0.0f; // Optional
+	colorBlending.blendConstants[2] = 0.0f; // Optional
+	colorBlending.blendConstants[3] = 0.0f; // Optional
+
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo;
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 0; // Optional
+	pipelineLayoutInfo.pSetLayouts = NULL; // Optional
+	pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
+	pipelineLayoutInfo.pPushConstantRanges = NULL; // Optional
+	VkPipelineLayout pipeline_layout;
+	VkPipeline graphics_pipeline;
+
+	if (vkCreatePipelineLayout(*device, &pipelineLayoutInfo, NULL, &pipeline_layout) != VK_SUCCESS) {
+		printf("Failed to create pipeline layout\n");
+	}
+
+	VkGraphicsPipelineCreateInfo pipelineInfo;
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineInfo.stageCount = 2;
+	pipelineInfo.pStages = shaderStages;
+	pipelineInfo.pVertexInputState = &vertexInputInfo;
+	pipelineInfo.pInputAssemblyState = &inputAssembly;
+	pipelineInfo.pViewportState = &viewportState;
+	pipelineInfo.pRasterizationState = &rasterizer;
+	pipelineInfo.pMultisampleState = &multisampling;
+	pipelineInfo.pDepthStencilState = NULL; // Optional
+	pipelineInfo.pColorBlendState = &colorBlending;
+	pipelineInfo.pDynamicState = NULL; // Optional
+	pipelineInfo.layout = pipeline_layout;
+	pipelineInfo.renderPass = *render_pass;
+	pipelineInfo.subpass = 0;
+	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
+	pipelineInfo.basePipelineIndex = -1; // Optional
+
+	// Finally creating the actual pipeline
+	if (vkCreateGraphicsPipelines(*device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &graphics_pipeline) != VK_SUCCESS) {
+		printf("Failed to create graphics pipeline\n");
+	}
+
+	// Don't need the shaders after pipeline creation is complete
+	vkDestroyShaderModule(*device, fragShaderModule, NULL);
+	vkDestroyShaderModule(*device, vertShaderModule, NULL);
+}
+
 void pick_physical_device(const VkInstance* instance, VkPhysicalDevice* physical_device){
 	unsigned int physical_device_count;
 	vkEnumeratePhysicalDevices(*instance, &physical_device_count, NULL);
@@ -102,10 +268,9 @@ void create_instance(VkInstance* instance, int validation_layers){
 	free(total_extensions);
 }
 
-void create_swapchain(const VkPhysicalDevice* physical_device, const VkDevice* logical_device, VkSurfaceKHR* surface, VkSwapchainKHR* swapchain){
+void create_swapchain(const VkPhysicalDevice* physical_device, const VkDevice* logical_device, VkSurfaceKHR* surface, VkSwapchainKHR* swapchain, VkSurfaceCapabilitiesKHR* capabilities){
 	// Get surface capabilities
-	VkSurfaceCapabilitiesKHR capabilities;
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(*physical_device, *surface, &capabilities);
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(*physical_device, *surface, capabilities);
 
 	// Get supported swapchain image formats
 	unsigned int format_count = 0;
@@ -121,12 +286,12 @@ void create_swapchain(const VkPhysicalDevice* physical_device, const VkDevice* l
 		}
 	}
 
-	VkExtent2D extent = capabilities.currentExtent;
+	VkExtent2D extent = capabilities->currentExtent;
 	VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
 
-	unsigned int image_count = capabilities.minImageCount + 1;
-	if(capabilities.maxImageCount > 0 && image_count > capabilities.maxImageCount){
-		image_count = capabilities.maxImageCount;
+	unsigned int image_count = capabilities->minImageCount + 1;
+	if(capabilities->maxImageCount > 0 && image_count > capabilities->maxImageCount){
+		image_count = capabilities->maxImageCount;
 	}
 
 	// Populate swapchain creation struct
@@ -140,7 +305,7 @@ void create_swapchain(const VkPhysicalDevice* physical_device, const VkDevice* l
 	swapchain_create_info.imageArrayLayers = 1;
 	swapchain_create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	swapchain_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	swapchain_create_info.preTransform = capabilities.currentTransform;
+	swapchain_create_info.preTransform = capabilities->currentTransform;
 	swapchain_create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	swapchain_create_info.presentMode = present_mode;
 	swapchain_create_info.clipped = VK_TRUE;
