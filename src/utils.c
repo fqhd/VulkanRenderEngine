@@ -16,3 +16,9 @@ void free_file(file_buffer* buffer){
 	buffer->data = NULL;
 	buffer->size = 0;
 }
+
+void err(const char* msg){
+	prinf("--------------- INTERNAL ERROR -----------------");
+	printf("%s\n", msg);
+	prinf("------------------------------------------------");
+}
