@@ -26,6 +26,11 @@ typedef struct {
 	VkPipelineLayout pipeline_layout;
 	int graphics_queue_index;
 	int num_image_views;
+	VkSemaphore* image_availalbe_semaphores;
+	VkSemaphore* render_finished_semaphores;
+	VkFence* fences_in_flight;
+	VkFence* images_in_flight;
+
 } Vulkan;
 
 void pick_physical_device(Vulkan* v);
@@ -39,6 +44,7 @@ void create_graphics_pipeline(Vulkan* v);
 void create_framebuffers(Vulkan* v);
 void create_command_pool(Vulkan* v);
 void create_command_buffers(Vulkan* v);
+void create_sync_objects(Vulkan* v);
 void destroy_vulkan(Vulkan* v);
 
 #endif

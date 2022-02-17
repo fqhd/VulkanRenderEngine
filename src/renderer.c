@@ -21,6 +21,7 @@ void init_renderer(Renderer* renderer){
 	create_framebuffers(&renderer->vulkan);
 	create_command_pool(&renderer->vulkan);
 	create_command_buffers(&renderer->vulkan);
+	create_sync_objects(&renderer->vulkan);
 }
 
 void destroy_renderer(Renderer* renderer){

@@ -1,6 +1,14 @@
 #include "vulkan_helper.h"
 
+const int MAX_FRAMES_IN_FLIGHT = 2;
+
 void destroy_vulkan(Vulkan* v){
+	for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
+		vkDestroySemaphore(v->logical_device, v->render_finished_semaphores[i], NULL);
+		vkDestroySemaphore(v->logical_device, v->image_availalbe_semaphores[i], NULL);
+		vkDestroyFence(v->logical_device, v->fences_in_flight[i], NULL);
+	}
+	
 	vkDestroyCommandPool(v->logical_device, v->command_pool, NULL);
 
 	for (int i = 0; i < v->num_image_views; i++) {
@@ -251,8 +259,38 @@ void get_graphics_queue(Vulkan* v){
 	free(queue_families);
 }
 
+void create_sync_objects(Vulkan* v){
+	v->image_availalbe_semaphores = malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
+	v->render_finished_semaphores = malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
+	v->fences_in_flight = malloc(sizeof(VkFence) * MAX_FRAMES_IN_FLIGHT);
+	v->images_in_flight = malloc(sizeof(VkFence) * MAX_FRAMES_IN_FLIGHT);
+	for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
+		v->image_availalbe_semaphores[i] = VK_NULL_HANDLE;
+		v->render_finished_semaphores[i] = VK_NULL_HANDLE;
+		v->fences_in_flight[i] = VK_NULL_HANDLE;
+		v->images_in_flight[i] = VK_NULL_HANDLE;
+	}
+
+	VkSemaphoreCreateInfo semaphoreInfo;
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semaphoreInfo.pNext = NULL;
+	semaphoreInfo.flags = 0;
+
+	VkFenceCreateInfo fenceInfo;
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+	fenceInfo.pNext = NULL;
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		if (vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->image_availalbe_semaphores[i]) != VK_SUCCESS ||
+		vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->render_finished_semaphores[i]) != VK_SUCCESS ||
+		vkCreateFence(v->logical_device, &fenceInfo, NULL, &v->fences_in_flight[i]) != VK_SUCCESS) {
+			err("Failed to create fences");
+		}
+	}
+}
+
 void create_logical_device(Vulkan* v){
-	// Information about the creation of the graphics queue
 	float priority = 1.0f;
 	VkDeviceQueueCreateInfo queue_create_info;
 	queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
