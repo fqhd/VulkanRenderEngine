@@ -11,8 +11,8 @@ void init_renderer(Renderer* renderer){
 	// Initializing vulkan
 	create_instance(&renderer->vulkan, 1);
 	pick_physical_device(&renderer->vulkan);
-	get_graphics_queue(&renderer->vulkan);
 	create_logical_device(&renderer->vulkan);
+	get_graphics_queue(&renderer->vulkan);
 	glfwCreateWindowSurface(renderer->vulkan.instance, renderer->vulkan.window, NULL, &renderer->vulkan.surface);
 	create_swapchain(&renderer->vulkan);
 	create_image_views(&renderer->vulkan);
@@ -22,6 +22,12 @@ void init_renderer(Renderer* renderer){
 	create_command_pool(&renderer->vulkan);
 	create_command_buffers(&renderer->vulkan);
 	create_sync_objects(&renderer->vulkan);
+}
+
+void render_scene(Renderer* renderer){
+	printf("hi\n");
+	draw_frame(&renderer->vulkan);
+	printf("hi\n");
 }
 
 void destroy_renderer(Renderer* renderer){

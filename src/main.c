@@ -7,6 +7,7 @@ int main(int argc, char** argvs){
 
 	while(!glfwWindowShouldClose(renderer.vulkan.window)){
 		glfwPollEvents();
+		render_scene(&renderer);
 	}
 
 	destroy_renderer(&renderer);

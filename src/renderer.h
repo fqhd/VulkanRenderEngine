@@ -9,5 +9,6 @@ typedef struct {
 
 void init_renderer(Renderer* renderer);
 void destroy_renderer(Renderer* renderer);
+void render_scene(Renderer* renderer);
 
 #endif

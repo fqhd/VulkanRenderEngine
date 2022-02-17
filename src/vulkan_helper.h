@@ -30,7 +30,8 @@ typedef struct {
 	VkSemaphore* render_finished_semaphores;
 	VkFence* fences_in_flight;
 	VkFence* images_in_flight;
-
+	int current_frame;
+	VkQueue graphics_queue;
 } Vulkan;
 
 void pick_physical_device(Vulkan* v);
@@ -46,5 +47,6 @@ void create_command_pool(Vulkan* v);
 void create_command_buffers(Vulkan* v);
 void create_sync_objects(Vulkan* v);
 void destroy_vulkan(Vulkan* v);
+void draw_frame(Vulkan* v);
 
 #endif
