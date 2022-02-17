@@ -431,23 +431,23 @@ void create_framebuffers(VkFramebuffer* framebuffers, const VkImageView* image_v
 	framebuffers = malloc(sizeof(VkFramebuffer) * num_image_views);
 
 	for (int i = 0; i < num_image_views; i++) {
-			VkImageView attachments[] = {
-				image_views[i]
-			};
+		VkImageView attachments[] = {
+			image_views[i]
+		};
 
-			VkFramebufferCreateInfo framebufferInfo;
-			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebufferInfo.renderPass = *render_pass;
-			framebufferInfo.attachmentCount = 1;
-			framebufferInfo.pAttachments = attachments;
-			framebufferInfo.width = capabilities->currentExtent.width;
-			framebufferInfo.height = capabilities->currentExtent.height;
-			framebufferInfo.layers = 1;
-			framebufferInfo.pNext = NULL;
-			framebufferInfo.flags = 0;
+		VkFramebufferCreateInfo framebufferInfo;
+		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo.renderPass = *render_pass;
+		framebufferInfo.attachmentCount = 1;
+		framebufferInfo.pAttachments = attachments;
+		framebufferInfo.width = capabilities->currentExtent.width;
+		framebufferInfo.height = capabilities->currentExtent.height;
+		framebufferInfo.layers = 1;
+		framebufferInfo.pNext = NULL;
+		framebufferInfo.flags = 0;
 
-			if (vkCreateFramebuffer(*device, &framebufferInfo, NULL, &framebuffers[i]) != VK_SUCCESS) {
-				err("Failed to create framebuffer");
-			}
+		if (vkCreateFramebuffer(*device, &framebufferInfo, NULL, &framebuffers[i]) != VK_SUCCESS) {
+			err("Failed to create framebuffer");
 		}
+	}
 }
