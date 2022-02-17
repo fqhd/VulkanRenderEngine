@@ -26,7 +26,7 @@ typedef struct {
 	VkPipelineLayout pipeline_layout;
 	int graphics_queue_index;
 	int num_image_views;
-	VkSemaphore* image_availalbe_semaphores;
+	VkSemaphore* image_available_semaphores;
 	VkSemaphore* render_finished_semaphores;
 	VkFence* fences_in_flight;
 	VkFence* images_in_flight;

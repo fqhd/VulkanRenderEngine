@@ -25,9 +25,7 @@ void init_renderer(Renderer* renderer){
 }
 
 void render_scene(Renderer* renderer){
-	printf("hi\n");
 	draw_frame(&renderer->vulkan);
-	printf("hi\n");
 }
 
 void destroy_renderer(Renderer* renderer){

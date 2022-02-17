@@ -6,7 +6,7 @@ void destroy_vulkan(Vulkan* v){
 	v->current_frame = 0;
 	for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
 		vkDestroySemaphore(v->logical_device, v->render_finished_semaphores[i], NULL);
-		vkDestroySemaphore(v->logical_device, v->image_availalbe_semaphores[i], NULL);
+		vkDestroySemaphore(v->logical_device, v->image_available_semaphores[i], NULL);
 		vkDestroyFence(v->logical_device, v->fences_in_flight[i], NULL);
 	}
 	
@@ -262,7 +262,7 @@ void draw_frame(Vulkan* v){
 
 	// Acquiring an image from the swapchain
 	uint32_t imageIndex;
-	vkAcquireNextImageKHR(v->logical_device, v->swapchain, UINT64_MAX, v->image_availalbe_semaphores[v->current_frame], VK_NULL_HANDLE, &imageIndex);
+	vkAcquireNextImageKHR(v->logical_device, v->swapchain, UINT64_MAX, v->image_available_semaphores[v->current_frame], VK_NULL_HANDLE, &imageIndex);
 
 	// Making sure another draw call isn't using the image that we just querried
 	if (v->images_in_flight[imageIndex] != VK_NULL_HANDLE) {
@@ -276,13 +276,14 @@ void draw_frame(Vulkan* v){
 	VkSubmitInfo submitInfo;
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore waitSemaphores[] = {v->image_availalbe_semaphores[v->current_frame]};
+	VkSemaphore waitSemaphores[] = {v->image_available_semaphores[v->current_frame]};
 	VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &v->command_buffers[imageIndex];
+	submitInfo.pNext = NULL;
 
 	VkSemaphore signalSemaphores[] = {v->render_finished_semaphores[v->current_frame]};
 	submitInfo.signalSemaphoreCount = 1;
@@ -311,12 +312,12 @@ void draw_frame(Vulkan* v){
 }
 
 void create_sync_objects(Vulkan* v){
-	v->image_availalbe_semaphores = malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
+	v->image_available_semaphores = malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
 	v->render_finished_semaphores = malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
 	v->fences_in_flight = malloc(sizeof(VkFence) * MAX_FRAMES_IN_FLIGHT);
 	v->images_in_flight = malloc(sizeof(VkFence) * MAX_FRAMES_IN_FLIGHT);
 	for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
-		v->image_availalbe_semaphores[i] = VK_NULL_HANDLE;
+		v->image_available_semaphores[i] = VK_NULL_HANDLE;
 		v->render_finished_semaphores[i] = VK_NULL_HANDLE;
 		v->fences_in_flight[i] = VK_NULL_HANDLE;
 		v->images_in_flight[i] = VK_NULL_HANDLE;
@@ -333,7 +334,7 @@ void create_sync_objects(Vulkan* v){
 	fenceInfo.pNext = NULL;
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		if (vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->image_availalbe_semaphores[i]) != VK_SUCCESS ||
+		if (vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->image_available_semaphores[i]) != VK_SUCCESS ||
 		vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->render_finished_semaphores[i]) != VK_SUCCESS ||
 		vkCreateFence(v->logical_device, &fenceInfo, NULL, &v->fences_in_flight[i]) != VK_SUCCESS) {
 			err("Failed to create fences");
