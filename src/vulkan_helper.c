@@ -451,3 +451,15 @@ void create_framebuffers(VkFramebuffer* framebuffers, const VkImageView* image_v
 		}
 	}
 }
+
+void create_command_pool(const VkDevice* device, int graphics_queue_index, VkCommandPool* pool){
+	VkCommandPoolCreateInfo poolInfo;
+	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolInfo.queueFamilyIndex = graphics_queue_index;
+	poolInfo.flags = 0; // Optional
+	poolInfo.pNext = NULL;
+
+	if (vkCreateCommandPool(*device, &poolInfo, NULL, pool) != VK_SUCCESS) {
+		err("Failed to create command pool");
+	}
+}

@@ -15,3 +15,4 @@ void create_image_views(const VkDevice* logical_device, const VkSwapchainKHR* sw
 void create_render_pass(const VkDevice* device, VkRenderPass* render_pass);
 void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, const VkRenderPass* render_pass);
 void create_framebuffers(VkFramebuffer* framebuffers, const VkImageView* image_views, int num_image_views, const VkRenderPass* render_pass, const VkSurfaceCapabilitiesKHR* capabilities, const VkDevice* device);
+void create_command_pool(const VkDevice* device, int graphics_queue_index, VkCommandPool* pool);
