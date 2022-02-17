@@ -1,3 +1,6 @@
+#ifndef VULKAN_HELPER_H
+#define VULKAN_HELPER_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -17,3 +20,5 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 void create_framebuffers(VkFramebuffer** framebuffers, const VkImageView* image_views, int num_image_views, const VkRenderPass* render_pass, const VkSurfaceCapabilitiesKHR* capabilities, const VkDevice* device);
 void create_command_pool(const VkDevice* device, int graphics_queue_index, VkCommandPool* pool);
 void create_command_buffers(const VkDevice* device, int num_swapchain_mages, const VkCommandPool* command_pool, const VkPipeline* graphics_pipeline, const VkSurfaceCapabilitiesKHR* capabilities, const VkRenderPass* render_pass, const VkFramebuffer* framebuffers, VkCommandBuffer* command_buffers);
+
+#endif
