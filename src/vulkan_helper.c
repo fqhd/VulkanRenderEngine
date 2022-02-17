@@ -488,53 +488,53 @@ void create_command_pool(Vulkan* v){
 }
 
 void create_command_buffers(Vulkan* v) {
-		// Creating the command buffers
-		v->command_buffers = malloc(sizeof(VkCommandBuffer) * v->num_image_views);
-		VkCommandBufferAllocateInfo allocInfo;
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.commandPool = v->command_pool;
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandBufferCount = v->num_image_views;
-		allocInfo.pNext = NULL;
+	// Creating the command buffers
+	v->command_buffers = malloc(sizeof(VkCommandBuffer) * v->num_image_views);
+	VkCommandBufferAllocateInfo allocInfo;
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.commandPool = v->command_pool;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandBufferCount = v->num_image_views;
+	allocInfo.pNext = NULL;
 
-		if (vkAllocateCommandBuffers(v->logical_device, &allocInfo, v->command_buffers) != VK_SUCCESS) {
-			err("Failed to allocate command buffer");
+	if (vkAllocateCommandBuffers(v->logical_device, &allocInfo, v->command_buffers) != VK_SUCCESS) {
+		err("Failed to allocate command buffer");
+	}
+
+	// Recording data into the command buffers
+	for (size_t i = 0; i < v->num_image_views; i++) {
+		VkCommandBufferBeginInfo beginInfo;
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = 0; // Optional
+		beginInfo.pInheritanceInfo = NULL; // Optional
+		beginInfo.pNext = NULL;
+
+		if (vkBeginCommandBuffer(v->command_buffers[i], &beginInfo) != VK_SUCCESS) {
+			err("Failed to begin recording command buffer");
 		}
 
-		// Recording data into the command buffers
-		for (size_t i = 0; i < v->num_image_views; i++) {
-			VkCommandBufferBeginInfo beginInfo;
-			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			beginInfo.flags = 0; // Optional
-			beginInfo.pInheritanceInfo = NULL; // Optional
-			beginInfo.pNext = NULL;
+		VkRenderPassBeginInfo renderPassInfo;
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = v->render_pass;
+		renderPassInfo.framebuffer = v->framebuffers[i];
+		renderPassInfo.renderArea.offset.x = 0;
+		renderPassInfo.renderArea.offset.y = 0;
+		renderPassInfo.renderArea.extent = v->capabilities.currentExtent;
+		VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+		renderPassInfo.clearValueCount = 1;
+		renderPassInfo.pClearValues = &clearColor;
+		renderPassInfo.pNext = NULL;
 
-			if (vkBeginCommandBuffer(v->command_buffers[i], &beginInfo) != VK_SUCCESS) {
-				err("Failed to begin recording command buffer");
-			}
+		vkCmdBeginRenderPass(v->command_buffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-			VkRenderPassBeginInfo renderPassInfo;
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassInfo.renderPass = v->render_pass;
-			renderPassInfo.framebuffer = v->framebuffers[i];
-			renderPassInfo.renderArea.offset.x = 0;
-			renderPassInfo.renderArea.offset.y = 0;
-			renderPassInfo.renderArea.extent = v->capabilities.currentExtent;
-			VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-			renderPassInfo.clearValueCount = 1;
-			renderPassInfo.pClearValues = &clearColor;
-			renderPassInfo.pNext = NULL;
+		vkCmdBindPipeline(v->command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, v->graphics_pipeline);
 
-			vkCmdBeginRenderPass(v->command_buffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdDraw(v->command_buffers[i], 3, 1, 0, 0);
 
-			vkCmdBindPipeline(v->command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, v->graphics_pipeline);
+		vkCmdEndRenderPass(v->command_buffers[i]);
 
-			vkCmdDraw(v->command_buffers[i], 3, 1, 0, 0);
-
-			vkCmdEndRenderPass(v->command_buffers[i]);
-
-			if (vkEndCommandBuffer(v->command_buffers[i]) != VK_SUCCESS) {
-				err("Failed to record command buffer");
-			}
+		if (vkEndCommandBuffer(v->command_buffers[i]) != VK_SUCCESS) {
+			err("Failed to record command buffer");
 		}
 	}
+}
