@@ -1,8 +1,14 @@
 #include "utils.h"
+#include <stdlib.h>
+#include <stdio.h>
 
 file_buffer read_file(const char* file_path){
 	FILE* file = fopen(file_path, "rb");
-	int file_size = fseek(file, 0, SEEK_END);
+	if(file == NULL){
+		err("Failed to open file");
+	}
+	fseek(file, 0, SEEK_END);
+	int file_size = ftell(file);
 	fseek(file, 0, SEEK_SET);
 	void* data = malloc(file_size);
 	fread(data, sizeof(unsigned char), file_size, file);
@@ -18,7 +24,7 @@ void free_file(file_buffer* buffer){
 }
 
 void err(const char* msg){
-	prinf("--------------- INTERNAL ERROR -----------------");
+	printf("--------------- INTERNAL ERROR -----------------\n");
 	printf("%s\n", msg);
-	prinf("------------------------------------------------");
+	printf("------------------------------------------------\n");
 }
