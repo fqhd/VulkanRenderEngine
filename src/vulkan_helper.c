@@ -5,10 +5,12 @@ VkShaderModule createShaderModule(const VkDevice* device, file_buffer buffer) {
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = buffer.size;
 	createInfo.pCode = (void*)buffer.data;
+	createInfo.pNext = NULL;
+	createInfo.flags = 0;
 
 	VkShaderModule shaderModule;
 	if (vkCreateShaderModule(*device, &createInfo, NULL, &shaderModule) != VK_SUCCESS) {
-		printf("Failed to create shader module\n");
+		err("Failed to create shader module");
 	}
 
 	free_file(&buffer);
@@ -30,6 +32,9 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
 	vertShaderStageInfo.module = vertShaderModule;
 	vertShaderStageInfo.pName = "main";
+	vertShaderStageInfo.pNext = NULL;
+	vertShaderStageInfo.flags = 0;
+	vertShaderStageInfo.pSpecializationInfo = NULL;
 
 	// Inserting the fragment shader into the pipeline
 	VkPipelineShaderStageCreateInfo fragShaderStageInfo;
@@ -38,6 +43,7 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 	fragShaderStageInfo.module = fragShaderModule;
 	fragShaderStageInfo.pName = "main";
 	fragShaderStageInfo.pNext = NULL;
+	fragShaderStageInfo.flags = 0;
 	fragShaderStageInfo.pSpecializationInfo = NULL;
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
@@ -49,12 +55,16 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 	vertexInputInfo.pVertexBindingDescriptions = NULL; // Optional
 	vertexInputInfo.vertexAttributeDescriptionCount = 0;
 	vertexInputInfo.pVertexAttributeDescriptions = NULL; // Optional
+	vertexInputInfo.pNext = NULL;
+	vertexInputInfo.flags = 0;
 
 	// Setting the type of rendering(triangle strip, line, line strip etc)
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly;
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
+	inputAssembly.flags = 0;
+	inputAssembly.pNext = NULL;
 
 	// Setting up the viewport
 	VkViewport viewport;
@@ -78,6 +88,9 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 	viewportState.pViewports = &viewport;
 	viewportState.scissorCount = 1;
 	viewportState.pScissors = &scissor;
+	viewportState.pNext = NULL;
+	viewportState.flags = 0;
+
 
 	// Setting up the rasterization stage
 	VkPipelineRasterizationStateCreateInfo rasterizer;
@@ -92,6 +105,8 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 	rasterizer.depthBiasConstantFactor = 0.0f; // Optional
 	rasterizer.depthBiasClamp = 0.0f; // Optional
 	rasterizer.depthBiasSlopeFactor = 0.0f; // Optional
+	rasterizer.pNext = NULL;
+	rasterizer.flags = 0;
 
 	// Setting up the color blending from the fragment shader and framebuffer
 	VkPipelineMultisampleStateCreateInfo multisampling;
@@ -102,6 +117,8 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 	multisampling.pSampleMask = NULL; // Optional
 	multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
 	multisampling.alphaToOneEnable = VK_FALSE; // Optional
+	multisampling.pNext = VK_FALSE; // Optional
+	multisampling.flags = 0; // Optional
 
 	// Color blending parameters per framebuffer
 	VkPipelineColorBlendAttachmentState colorBlendAttachment;
@@ -124,6 +141,8 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 	colorBlending.blendConstants[1] = 0.0f; // Optional
 	colorBlending.blendConstants[2] = 0.0f; // Optional
 	colorBlending.blendConstants[3] = 0.0f; // Optional
+	colorBlending.pNext = NULL;
+	colorBlending.flags = 0;
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo;
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -131,6 +150,9 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 	pipelineLayoutInfo.pSetLayouts = NULL; // Optional
 	pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
 	pipelineLayoutInfo.pPushConstantRanges = NULL; // Optional
+	pipelineLayoutInfo.pNext = NULL; // Optional
+	pipelineLayoutInfo.flags = 0; // Optional
+
 	VkPipelineLayout pipeline_layout;
 	VkPipeline graphics_pipeline;
 
@@ -155,6 +177,8 @@ void create_graphics_pipeline(const VkDevice* device, const VkExtent2D* extent, 
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
 	pipelineInfo.basePipelineIndex = -1; // Optional
+	pipelineInfo.pNext = NULL;
+	pipelineInfo.flags = 0;
 
 	// Finally creating the actual pipeline
 	if (vkCreateGraphicsPipelines(*device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &graphics_pipeline) != VK_SUCCESS) {
