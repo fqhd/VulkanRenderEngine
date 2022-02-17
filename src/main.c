@@ -12,6 +12,8 @@ int main(int argc, char** argvs){
 	VkSurfaceCapabilitiesKHR capabilities;
 	VkFramebuffer* framebuffers;
 	VkCommandPool command_pool;
+	VkPipeline graphics_pipeline;
+	VkCommandBuffer* command_buffers;
 	int graphics_queue_index = 0;
 	int num_image_views;
 
@@ -31,9 +33,10 @@ int main(int argc, char** argvs){
 	create_swapchain(&physical_device, &logical_device, &surface, &swapchain, &capabilities);
 	create_image_views(&logical_device, &swapchain, &image_views, &num_image_views);
 	create_render_pass(&logical_device, &render_pass);
-	create_graphics_pipeline(&logical_device, &capabilities.currentExtent, &render_pass);
-	create_framebuffers(framebuffers, image_views, num_image_views, &render_pass, &capabilities, &logical_device);
+	create_graphics_pipeline(&logical_device, &capabilities.currentExtent, &render_pass, &graphics_pipeline);
+	create_framebuffers(&framebuffers, image_views, num_image_views, &render_pass, &capabilities, &logical_device);
 	create_command_pool(&logical_device, graphics_queue_index, &command_pool);
+	create_command_buffers(&logical_device, num_image_views, &command_pool, &graphics_pipeline, &capabilities, &render_pass, framebuffers, command_buffers);
 
 	while(!glfwWindowShouldClose(window)){
 		glfwPollEvents();
