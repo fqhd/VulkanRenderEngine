@@ -26,16 +26,11 @@ typedef struct {
 	VkPipelineLayout pipeline_layout;
 	int graphics_queue_index;
 	int num_image_views;
-	VkSemaphore* image_available_semaphores;
-	VkSemaphore* render_finished_semaphores;
-	VkFence* fences_in_flight;
-	VkFence* images_in_flight;
-	int current_frame;
 	VkQueue graphics_queue;
 } Vulkan;
 
 void pick_physical_device(Vulkan* v);
-void get_graphics_queue(Vulkan* v);
+void get_graphics_queue_family_index(Vulkan* v);
 void create_logical_device(Vulkan* v);
 void create_instance(Vulkan* v, int validation_layers);
 void create_swapchain(Vulkan* v);

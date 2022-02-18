@@ -2,42 +2,6 @@
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
-void destroy_vulkan(Vulkan* v){
-	v->current_frame = 0;
-	for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
-		vkDestroySemaphore(v->logical_device, v->render_finished_semaphores[i], NULL);
-		vkDestroySemaphore(v->logical_device, v->image_available_semaphores[i], NULL);
-		vkDestroyFence(v->logical_device, v->fences_in_flight[i], NULL);
-	}
-	
-	vkDestroyCommandPool(v->logical_device, v->command_pool, NULL);
-
-	for (int i = 0; i < v->num_image_views; i++) {
-		vkDestroyFramebuffer(v->logical_device, v->framebuffers[i], NULL);
-	}
-
-	vkDestroyRenderPass(v->logical_device, v->render_pass, NULL);
-
-	vkDestroyPipeline(v->logical_device, v->graphics_pipeline, NULL);
-
-	vkDestroyPipelineLayout(v->logical_device, v->pipeline_layout, NULL);
-
-	for (int i = 0; i < v->num_image_views; i++) {
-		vkDestroyImageView(v->logical_device, v->image_views[i], NULL);
-	}
-
-	vkDestroySwapchainKHR(v->logical_device, v->swapchain, NULL);
-
-	vkDestroyDevice(v->logical_device, NULL);
-
-	vkDestroySurfaceKHR(v->instance, v->surface, NULL);
-
-	vkDestroyInstance(v->instance, NULL);
-
-	glfwDestroyWindow(v->window);
-	glfwTerminate();
-}
-
 VkShaderModule createShaderModule(const VkDevice* device, file_buffer buffer) {
 	VkShaderModuleCreateInfo createInfo;
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -192,7 +156,7 @@ void create_graphics_pipeline(Vulkan* v){
 	pipelineLayoutInfo.flags = 0; // Optional
 
 	if (vkCreatePipelineLayout(v->logical_device, &pipelineLayoutInfo, NULL, &v->pipeline_layout) != VK_SUCCESS) {
-		printf("Failed to create pipeline layout\n");
+		err("Failed to create pipeline layout");
 	}
 
 	VkGraphicsPipelineCreateInfo pipelineInfo;
@@ -217,7 +181,7 @@ void create_graphics_pipeline(Vulkan* v){
 
 	// Finally creating the actual pipeline
 	if (vkCreateGraphicsPipelines(v->logical_device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &v->graphics_pipeline) != VK_SUCCESS) {
-		printf("Failed to create graphics pipeline\n");
+		err("Failed to create graphics pipeline");
 	}
 
 	// Don't need the shaders after pipeline creation is complete
@@ -239,7 +203,7 @@ void pick_physical_device(Vulkan* v){
 	free(physical_devices);
 }
 
-void get_graphics_queue(Vulkan* v){
+void get_graphics_queue_family_index(Vulkan* v){
 	unsigned int queue_family_count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(v->physical_device, &queue_family_count, NULL);
 	VkQueueFamilyProperties* queue_families = malloc(sizeof(VkQueueFamilyProperties) * queue_family_count);
@@ -258,95 +222,18 @@ void get_graphics_queue(Vulkan* v){
 }
 
 void draw_frame(Vulkan* v){
-	vkWaitForFences(v->logical_device, 1, &v->fences_in_flight[v->current_frame], VK_TRUE, UINT64_MAX);
-
-	// Acquiring an image from the swapchain
-	uint32_t imageIndex;
-	vkAcquireNextImageKHR(v->logical_device, v->swapchain, UINT64_MAX, v->image_available_semaphores[v->current_frame], VK_NULL_HANDLE, &imageIndex);
-
-	// Making sure another draw call isn't using the image that we just querried
-	if (v->images_in_flight[imageIndex] != VK_NULL_HANDLE) {
-		vkWaitForFences(v->logical_device, 1, &v->images_in_flight[imageIndex], VK_TRUE, UINT64_MAX);
-	}
-
-	// Mark the image as now being in use for rendering by this frame
-	v->images_in_flight[imageIndex] = v->fences_in_flight[v->current_frame];
-
-	// Submiting a graphics queue (drawing to the image)
-	VkSubmitInfo submitInfo;
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	VkSemaphore waitSemaphores[] = {v->image_available_semaphores[v->current_frame]};
-	VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = waitSemaphores;
-	submitInfo.pWaitDstStageMask = waitStages;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &v->command_buffers[imageIndex];
-	submitInfo.pNext = NULL;
-
-	VkSemaphore signalSemaphores[] = {v->render_finished_semaphores[v->current_frame]};
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = signalSemaphores;
-
-	vkResetFences(v->logical_device, 1, &v->fences_in_flight[v->current_frame]);
-
-	if (vkQueueSubmit(v->graphics_queue, 1, &submitInfo, v->fences_in_flight[v->current_frame]) != VK_SUCCESS) {
-		err("Failed to submit draw command buffer");
-	}
-
-	// Submitting the image back to the swapchain for presentation
-	VkPresentInfoKHR presentInfo;
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = signalSemaphores;
-	VkSwapchainKHR swapChains[] = {v->swapchain};
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = swapChains;
-	presentInfo.pImageIndices = &imageIndex;
-
-	vkQueuePresentKHR(v->graphics_queue, &presentInfo);
-
-	v->current_frame = (v->current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+	
 }
 
 void create_sync_objects(Vulkan* v){
-	v->image_available_semaphores = malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
-	v->render_finished_semaphores = malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
-	v->fences_in_flight = malloc(sizeof(VkFence) * MAX_FRAMES_IN_FLIGHT);
-	v->images_in_flight = malloc(sizeof(VkFence) * MAX_FRAMES_IN_FLIGHT);
-	for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
-		v->image_available_semaphores[i] = VK_NULL_HANDLE;
-		v->render_finished_semaphores[i] = VK_NULL_HANDLE;
-		v->fences_in_flight[i] = VK_NULL_HANDLE;
-		v->images_in_flight[i] = VK_NULL_HANDLE;
-	}
 
-	VkSemaphoreCreateInfo semaphoreInfo;
-	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	semaphoreInfo.pNext = NULL;
-	semaphoreInfo.flags = 0;
-
-	VkFenceCreateInfo fenceInfo;
-	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-	fenceInfo.pNext = NULL;
-
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		if (vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->image_available_semaphores[i]) != VK_SUCCESS ||
-		vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->render_finished_semaphores[i]) != VK_SUCCESS ||
-		vkCreateFence(v->logical_device, &fenceInfo, NULL, &v->fences_in_flight[i]) != VK_SUCCESS) {
-			err("Failed to create fences");
-		}
-	}
 }
 
 void create_logical_device(Vulkan* v){
 	float priority = 1.0f;
 	VkDeviceQueueCreateInfo queue_create_info;
 	queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queue_create_info.queueFamilyIndex = 0;
+	queue_create_info.queueFamilyIndex = v->graphics_queue_index;
 	queue_create_info.queueCount = 1;
 	queue_create_info.pQueuePriorities = &priority;
 	queue_create_info.pNext = NULL;
@@ -368,7 +255,7 @@ void create_logical_device(Vulkan* v){
 	device_create_info.flags = 0;
 
 	if(vkCreateDevice(v->physical_device, &device_create_info, NULL, &v->logical_device) != VK_SUCCESS){
-		printf("Failed to create device\n");
+		err("Failed to create device");
 	}
 
 	vkGetDeviceQueue(v->logical_device, v->graphics_queue_index, 0, &v->graphics_queue);
@@ -383,7 +270,7 @@ void create_instance(Vulkan* v, int validation_layers){
 	unsigned int glfw_extension_count = 0;
 	const char** glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
 	if(glfw_extensions == NULL){
-		printf("Failed to get glfw extensions\n");
+		err("Failed to get glfw extensions");
 	}
 
 	unsigned int total_extension_count = glfw_extension_count + 1;
@@ -570,7 +457,7 @@ void create_framebuffers(Vulkan* v){
 void create_command_pool(Vulkan* v){
 	VkCommandPoolCreateInfo poolInfo;
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	poolInfo.queueFamilyIndex = 0;
+	poolInfo.queueFamilyIndex = v->graphics_queue_index;
 	poolInfo.flags = 0; // Optional
 	poolInfo.pNext = NULL;
 
@@ -629,4 +516,33 @@ void create_command_buffers(Vulkan* v) {
 			err("Failed to record command buffer");
 		}
 	}
+}
+
+void destroy_vulkan(Vulkan* v){
+	vkDestroyCommandPool(v->logical_device, v->command_pool, NULL);
+
+	for (int i = 0; i < v->num_image_views; i++) {
+		vkDestroyFramebuffer(v->logical_device, v->framebuffers[i], NULL);
+	}
+
+	vkDestroyRenderPass(v->logical_device, v->render_pass, NULL);
+
+	vkDestroyPipeline(v->logical_device, v->graphics_pipeline, NULL);
+
+	vkDestroyPipelineLayout(v->logical_device, v->pipeline_layout, NULL);
+
+	for (int i = 0; i < v->num_image_views; i++) {
+		vkDestroyImageView(v->logical_device, v->image_views[i], NULL);
+	}
+
+	vkDestroySwapchainKHR(v->logical_device, v->swapchain, NULL);
+
+	vkDestroyDevice(v->logical_device, NULL);
+
+	vkDestroySurfaceKHR(v->instance, v->surface, NULL);
+
+	vkDestroyInstance(v->instance, NULL);
+
+	glfwDestroyWindow(v->window);
+	glfwTerminate();
 }
