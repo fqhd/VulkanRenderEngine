@@ -222,11 +222,52 @@ void get_graphics_queue_family_index(Vulkan* v){
 }
 
 void draw_frame(Vulkan* v){
-	
+	uint32_t imageIndex;
+    vkAcquireNextImageKHR(v->logical_device, v->swapchain, UINT64_MAX, v->image_available_semaphore, VK_NULL_HANDLE, &imageIndex);
+
+	VkSubmitInfo submitInfo;
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &v->command_buffers[imageIndex];
+
+	VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &v->image_available_semaphore;
+	submitInfo.pWaitDstStageMask = waitStages;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &v->render_finished_semaphore;
+	submitInfo.pNext = NULL;
+
+	if (vkQueueSubmit(v->graphics_queue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+		err("Failed to submit to graphics queue");
+	}
+
+	VkPresentInfoKHR presentInfo;
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = &v->render_finished_semaphore;
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &v->swapchain;
+	presentInfo.pImageIndices = &imageIndex;
+	presentInfo.pResults = NULL;
+	presentInfo.pNext = NULL;
+
+	vkQueuePresentKHR(v->graphics_queue, &presentInfo);
+
+	vkQueueWaitIdle(v->graphics_queue);
 }
 
 void create_sync_objects(Vulkan* v){
+	v->image_index = 0;
+    VkSemaphoreCreateInfo semaphoreInfo;
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semaphoreInfo.pNext = NULL;
+	semaphoreInfo.flags = 0;
 
+	if (vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->image_available_semaphore) != VK_SUCCESS ||
+		vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->render_finished_semaphore) != VK_SUCCESS) {
+
+	}
 }
 
 void create_logical_device(Vulkan* v){
@@ -413,16 +454,25 @@ void create_render_pass(Vulkan* v){
 	subpass.preserveAttachmentCount = 0;
 	subpass.pPreserveAttachments = NULL;
 
+	VkSubpassDependency dependency;
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.srcAccessMask = 0;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	dependency.dependencyFlags = 0;
+
 	VkRenderPassCreateInfo renderPassInfo;
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassInfo.attachmentCount = 1;
 	renderPassInfo.pAttachments = &colorAttachment;
 	renderPassInfo.subpassCount = 1;
 	renderPassInfo.pSubpasses = &subpass;
+	renderPassInfo.dependencyCount = 1;
+	renderPassInfo.pDependencies = &dependency;
 	renderPassInfo.pNext = NULL;
 	renderPassInfo.flags = 0;
-	renderPassInfo.dependencyCount = 0;
-	renderPassInfo.pDependencies = NULL;
 
 	if (vkCreateRenderPass(v->logical_device, &renderPassInfo, NULL, &v->render_pass) != VK_SUCCESS) {
 		err("Failed to create render pass");
@@ -519,6 +569,11 @@ void create_command_buffers(Vulkan* v) {
 }
 
 void destroy_vulkan(Vulkan* v){
+	vkDeviceWaitIdle(v->logical_device);
+
+	vkDestroySemaphore(v->logical_device, v->render_finished_semaphore, NULL);
+	vkDestroySemaphore(v->logical_device, v->image_available_semaphore, NULL);
+
 	vkDestroyCommandPool(v->logical_device, v->command_pool, NULL);
 
 	for (int i = 0; i < v->num_image_views; i++) {

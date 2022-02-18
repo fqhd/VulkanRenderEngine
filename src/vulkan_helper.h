@@ -27,6 +27,9 @@ typedef struct {
 	int graphics_queue_index;
 	int num_image_views;
 	VkQueue graphics_queue;
+	VkSemaphore image_available_semaphore;
+	VkSemaphore render_finished_semaphore;
+	int image_index;
 } Vulkan;
 
 void pick_physical_device(Vulkan* v);
