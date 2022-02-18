@@ -196,7 +196,7 @@ void pick_physical_device(Vulkan* v){
 	vkEnumeratePhysicalDevices(v->instance, &physical_device_count, physical_devices);
 
 	if(physical_device_count == 0){
-		printf("Error: Failed to get physical device\n");
+		err("Error: Failed to get physical device");
 	}
 
 	v->physical_device = physical_devices[0];
@@ -209,7 +209,7 @@ void get_graphics_queue_family_index(Vulkan* v){
 	VkQueueFamilyProperties* queue_families = malloc(sizeof(VkQueueFamilyProperties) * queue_family_count);
 	vkGetPhysicalDeviceQueueFamilyProperties(v->physical_device, &queue_family_count, queue_families);
 	if(queue_family_count == 0) {
-		printf("Found no queue families in physical device\n");
+		err("Found no queue families in physical device");
 	}
 
 	for(unsigned int i = 0; i < queue_family_count; i++){
@@ -291,7 +291,7 @@ void create_instance(Vulkan* v, int validation_layers){
 	}
 
 	if(vkCreateInstance(&create_info, NULL, &v->instance) != VK_SUCCESS){
-		printf("Failed to create instance\n");
+		err("Failed to create instance");
 	}
 
 	free(total_extensions);
@@ -343,7 +343,7 @@ void create_swapchain(Vulkan* v){
 	swapchain_create_info.flags = 0;
 
 	if(vkCreateSwapchainKHR(v->logical_device, &swapchain_create_info, NULL, &v->swapchain) != VK_SUCCESS){
-		printf("Failed to create swapchain\n");
+		err("Failed to create swapchain");
 	}
 
 	free(formats);
@@ -378,7 +378,7 @@ void create_image_views(Vulkan* v){
 		create_info.flags = 0;
 
 		if(vkCreateImageView(v->logical_device, &create_info, NULL, &v->image_views[i]) != VK_SUCCESS){
-			printf("Falied creating image view\n");
+			err("Falied creating image view");
 		}
 	}
 
@@ -425,7 +425,7 @@ void create_render_pass(Vulkan* v){
 	renderPassInfo.pDependencies = NULL;
 
 	if (vkCreateRenderPass(v->logical_device, &renderPassInfo, NULL, &v->render_pass) != VK_SUCCESS) {
-		printf("Failed to create render pass\n");
+		err("Failed to create render pass");
 	}
 }
 
