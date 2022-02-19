@@ -245,7 +245,7 @@ void draw_frame(Vulkan* v){
 	VkPresentInfoKHR presentInfo;
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &v->render_finished_semaphore;
+	presentInfo.pWaitSemaphores = &v->render_finished_semaphore[];
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &v->swapchain;
 	presentInfo.pImageIndices = &imageIndex;
@@ -259,15 +259,21 @@ void draw_frame(Vulkan* v){
 
 void create_sync_objects(Vulkan* v){
 	v->image_index = 0;
+	v->image_available_semaphores = malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
+	v->render_finished_semaphores = malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
+
     VkSemaphoreCreateInfo semaphoreInfo;
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 	semaphoreInfo.pNext = NULL;
 	semaphoreInfo.flags = 0;
 
-	if (vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->image_available_semaphore) != VK_SUCCESS ||
-		vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->render_finished_semaphore) != VK_SUCCESS) {
+	for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
+		if (vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->image_available_semaphores[i]) != VK_SUCCESS ||
+			vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->render_finished_semaphores[i]) != VK_SUCCESS) {
 			err("Failed to create sync objects");
+		}
 	}
+	
 }
 
 void create_logical_device(Vulkan* v){
