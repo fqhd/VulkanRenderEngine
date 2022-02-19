@@ -29,7 +29,7 @@ typedef struct {
 	VkQueue graphics_queue;
 	VkSemaphore* image_available_semaphores;
 	VkSemaphore* render_finished_semaphores;
-	int image_index;
+	int current_frame;
 } Vulkan;
 
 void pick_physical_device(Vulkan* v);

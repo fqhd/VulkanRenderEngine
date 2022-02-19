@@ -245,7 +245,7 @@ void draw_frame(Vulkan* v){
 	VkPresentInfoKHR presentInfo;
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &v->render_finished_semaphore[];
+	presentInfo.pWaitSemaphores = &v->render_finished_semaphore[v->current_frame];
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &v->swapchain;
 	presentInfo.pImageIndices = &imageIndex;
@@ -577,8 +577,10 @@ void create_command_buffers(Vulkan* v) {
 void destroy_vulkan(Vulkan* v){
 	vkDeviceWaitIdle(v->logical_device);
 
-	vkDestroySemaphore(v->logical_device, v->render_finished_semaphore, NULL);
-	vkDestroySemaphore(v->logical_device, v->image_available_semaphore, NULL);
+	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        vkDestroySemaphore(v->logical_device, v->image_available_semaphores[i], NULL);
+        vkDestroySemaphore(v->logical_device, v->render_finished_semaphores[i], NULL);
+    }
 
 	vkDestroyCommandPool(v->logical_device, v->command_pool, NULL);
 
