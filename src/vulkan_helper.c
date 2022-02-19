@@ -263,15 +263,22 @@ void create_sync_objects(Vulkan* v){
 	v->current_frame = 0;
 	v->image_available_semaphores = malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
 	v->render_finished_semaphores = malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
+	v->in_flight_fences = malloc(sizeof(VkFence) * MAX_FRAMES_IN_FLIGHT);
 
     VkSemaphoreCreateInfo semaphoreInfo;
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 	semaphoreInfo.pNext = NULL;
 	semaphoreInfo.flags = 0;
 
+	VkFenceCreateInfo fenceInfo;
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	semaphoreInfo.pNext = NULL;
+	semaphoreInfo.flags = 0;
+
 	for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
 		if (vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->image_available_semaphores[i]) != VK_SUCCESS ||
-			vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->render_finished_semaphores[i]) != VK_SUCCESS) {
+			vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->render_finished_semaphores[i]) != VK_SUCCESS ||
+			vkCreateFence(v->logical_device, &fenceInfo, NULL, &v->in_flight_fences[i]) != VK_SUCCESS) {
 			err("Failed to create sync objects");
 		}
 	}
