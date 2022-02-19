@@ -29,6 +29,7 @@ typedef struct {
 	VkQueue graphics_queue;
 	VkSemaphore* image_available_semaphores;
 	VkSemaphore* render_finished_semaphores;
+	VkFence* in_flight_fences;
 	int current_frame;
 } Vulkan;
 
