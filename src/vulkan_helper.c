@@ -266,7 +266,7 @@ void create_sync_objects(Vulkan* v){
 
 	if (vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->image_available_semaphore) != VK_SUCCESS ||
 		vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->render_finished_semaphore) != VK_SUCCESS) {
-
+			err("Failed to create sync objects");
 	}
 }
 
