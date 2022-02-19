@@ -1,7 +1,5 @@
 #include "vulkan_helper.h"
 
-const int MAX_FRAMES_IN_FLIGHT = 2;
-
 VkShaderModule createShaderModule(const VkDevice* device, file_buffer buffer) {
 	VkShaderModuleCreateInfo createInfo;
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -222,48 +220,58 @@ void get_graphics_queue_family_index(Vulkan* v){
 }
 
 void draw_frame(Vulkan* v){
+	vkWaitForFences(v->logical_device, 1, &v->in_flight_fences[v->current_frame], VK_TRUE, UINT64_MAX);
+	
 	uint32_t imageIndex;
     vkAcquireNextImageKHR(v->logical_device, v->swapchain, UINT64_MAX, v->image_available_semaphores[v->current_frame], VK_NULL_HANDLE, &imageIndex);
+
+	if (v->images_in_flight[imageIndex] != VK_NULL_HANDLE) {
+		vkWaitForFences(v->logical_device, 1, &v->images_in_flight[imageIndex], VK_TRUE, UINT64_MAX);
+    }
+
+	v->images_in_flight[imageIndex] = v->in_flight_fences[v->current_frame];
 
 	VkSubmitInfo submitInfo;
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &v->command_buffers[imageIndex];
-
 	VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = &v->image_available_semaphores[v->current_frame];
 	submitInfo.pWaitDstStageMask = waitStages;
+		
 	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &v->render_finished_semaphores[v->current_frame];
+	VkSemaphore signalSemaphores[] = {v->render_finished_semaphores[v->current_frame]};
+
+	submitInfo.pSignalSemaphores = signalSemaphores;
 	submitInfo.pNext = NULL;
 
-	if (vkQueueSubmit(v->graphics_queue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+    vkResetFences(v->logical_device, 1, &v->in_flight_fences[v->current_frame]);
+	if (vkQueueSubmit(v->graphics_queue, 1, &submitInfo, v->in_flight_fences[v->current_frame]) != VK_SUCCESS) {
 		err("Failed to submit to graphics queue");
 	}
-
 	VkPresentInfoKHR presentInfo;
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &v->render_finished_semaphores[v->current_frame];
+	presentInfo.pWaitSemaphores = signalSemaphores;
 	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &v->swapchain;
+	VkSwapchainKHR swapChains[] = {v->swapchain};
+	presentInfo.pSwapchains = swapChains;
 	presentInfo.pImageIndices = &imageIndex;
 	presentInfo.pResults = NULL;
 	presentInfo.pNext = NULL;
 
-	v->current_frame = (v->current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
-
 	vkQueuePresentKHR(v->graphics_queue, &presentInfo);
 
-	vkQueueWaitIdle(v->graphics_queue);
+	v->current_frame = (v->current_frame + 1) % v->num_image_views;
 }
 
 void create_sync_objects(Vulkan* v){
 	v->current_frame = 0;
-	v->image_available_semaphores = malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
-	v->render_finished_semaphores = malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
-	v->in_flight_fences = malloc(sizeof(VkFence) * MAX_FRAMES_IN_FLIGHT);
+	v->image_available_semaphores = malloc(sizeof(VkSemaphore) * v->num_image_views);
+	v->render_finished_semaphores = malloc(sizeof(VkSemaphore) * v->num_image_views);
+	v->in_flight_fences = malloc(sizeof(VkFence) * v->num_image_views);
+	v->images_in_flight = malloc(sizeof(VkFence) * v->num_image_views);
 
     VkSemaphoreCreateInfo semaphoreInfo;
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -272,17 +280,17 @@ void create_sync_objects(Vulkan* v){
 
 	VkFenceCreateInfo fenceInfo;
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	semaphoreInfo.pNext = NULL;
-	semaphoreInfo.flags = 0;
+	fenceInfo.pNext = NULL;
+	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-	for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
+	v->images_in_flight[0] = VK_NULL_HANDLE;
+	for(int i = 0; i < v->num_image_views; i++){
 		if (vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->image_available_semaphores[i]) != VK_SUCCESS ||
 			vkCreateSemaphore(v->logical_device, &semaphoreInfo, NULL, &v->render_finished_semaphores[i]) != VK_SUCCESS ||
 			vkCreateFence(v->logical_device, &fenceInfo, NULL, &v->in_flight_fences[i]) != VK_SUCCESS) {
 			err("Failed to create sync objects");
 		}
 	}
-	
 }
 
 void create_logical_device(Vulkan* v){
@@ -586,9 +594,10 @@ void create_command_buffers(Vulkan* v) {
 void destroy_vulkan(Vulkan* v){
 	vkDeviceWaitIdle(v->logical_device);
 
-	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+	for (int i = 0; i < v->num_image_views; i++) {
         vkDestroySemaphore(v->logical_device, v->image_available_semaphores[i], NULL);
         vkDestroySemaphore(v->logical_device, v->render_finished_semaphores[i], NULL);
+		vkDestroyFence(v->logical_device, v->in_flight_fences[i], NULL);
     }
 
 	vkDestroyCommandPool(v->logical_device, v->command_pool, NULL);
