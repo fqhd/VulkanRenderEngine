@@ -223,7 +223,7 @@ void get_graphics_queue_family_index(Vulkan* v){
 
 void draw_frame(Vulkan* v){
 	uint32_t imageIndex;
-    vkAcquireNextImageKHR(v->logical_device, v->swapchain, UINT64_MAX, v->image_available_semaphore, VK_NULL_HANDLE, &imageIndex);
+    vkAcquireNextImageKHR(v->logical_device, v->swapchain, UINT64_MAX, v->image_available_semaphores[v->current_frame], VK_NULL_HANDLE, &imageIndex);
 
 	VkSubmitInfo submitInfo;
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -232,10 +232,10 @@ void draw_frame(Vulkan* v){
 
 	VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &v->image_available_semaphore;
+	submitInfo.pWaitSemaphores = &v->image_available_semaphores[v->current_frame];
 	submitInfo.pWaitDstStageMask = waitStages;
 	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &v->render_finished_semaphore;
+	submitInfo.pSignalSemaphores = &v->render_finished_semaphores[v->current_frame];
 	submitInfo.pNext = NULL;
 
 	if (vkQueueSubmit(v->graphics_queue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
@@ -245,12 +245,14 @@ void draw_frame(Vulkan* v){
 	VkPresentInfoKHR presentInfo;
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &v->render_finished_semaphore[v->current_frame];
+	presentInfo.pWaitSemaphores = &v->render_finished_semaphores[v->current_frame];
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &v->swapchain;
 	presentInfo.pImageIndices = &imageIndex;
 	presentInfo.pResults = NULL;
 	presentInfo.pNext = NULL;
+
+	v->current_frame = (v->current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 
 	vkQueuePresentKHR(v->graphics_queue, &presentInfo);
 
@@ -258,7 +260,7 @@ void draw_frame(Vulkan* v){
 }
 
 void create_sync_objects(Vulkan* v){
-	v->image_index = 0;
+	v->current_frame = 0;
 	v->image_available_semaphores = malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
 	v->render_finished_semaphores = malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
 
