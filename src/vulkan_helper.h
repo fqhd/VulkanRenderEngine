@@ -27,8 +27,8 @@ typedef struct {
 	int graphics_queue_index;
 	int num_image_views;
 	VkQueue graphics_queue;
-	VkSemaphore image_available_semaphore;
-	VkSemaphore render_finished_semaphore;
+	VkSemaphore* image_available_semaphores;
+	VkSemaphore* render_finished_semaphores;
 	int image_index;
 } Vulkan;
 
