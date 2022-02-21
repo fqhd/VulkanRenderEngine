@@ -1,5 +1,9 @@
 #include "vulkan_helper.h"
 
+static void window_resize_callback(GLFWwindow* window, int width, int height) {
+	
+}
+
 void create_window(Vulkan* v){
 	if(glfwInit() != GLFW_TRUE){
 		printf("Failed to initialize GLFW");
@@ -7,6 +11,7 @@ void create_window(Vulkan* v){
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	v->window = glfwCreateWindow(800, 600, "Our Vulkan Window", NULL, NULL);
+	glfwSetFramebufferSizeCallback(v->window, window_resize_callback);
 }
 
 VkShaderModule createShaderModule(const VkDevice* device, file_buffer buffer) {
