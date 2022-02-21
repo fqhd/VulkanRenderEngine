@@ -49,5 +49,6 @@ void create_sync_objects(Vulkan* v);
 void destroy_vulkan(Vulkan* v);
 void recreate_swapchain(Vulkan* v);
 void draw_frame(Vulkan* v);
+void cleanup_swapchain(Vulkan* v);
 
 #endif

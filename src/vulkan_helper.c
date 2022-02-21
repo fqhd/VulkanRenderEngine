@@ -611,11 +611,23 @@ void destroy_vulkan(Vulkan* v){
 		vkDestroyFence(v->logical_device, v->in_flight_fences[i], NULL);
     }
 
-	vkDestroyCommandPool(v->logical_device, v->command_pool, NULL);
+	vkDestroyDevice(v->logical_device, NULL);
 
+	vkDestroySurfaceKHR(v->instance, v->surface, NULL);
+
+	vkDestroyInstance(v->instance, NULL);
+
+	glfwDestroyWindow(v->window);
+	glfwTerminate();
+}
+
+
+void cleanup_swapchain(Vulkan* v){
 	for (int i = 0; i < v->num_image_views; i++) {
 		vkDestroyFramebuffer(v->logical_device, v->framebuffers[i], NULL);
 	}
+
+	vkDestroyCommandPool(v->logical_device, v->command_pool, NULL);
 
 	vkDestroyRenderPass(v->logical_device, v->render_pass, NULL);
 
@@ -628,13 +640,4 @@ void destroy_vulkan(Vulkan* v){
 	}
 
 	vkDestroySwapchainKHR(v->logical_device, v->swapchain, NULL);
-
-	vkDestroyDevice(v->logical_device, NULL);
-
-	vkDestroySurfaceKHR(v->instance, v->surface, NULL);
-
-	vkDestroyInstance(v->instance, NULL);
-
-	glfwDestroyWindow(v->window);
-	glfwTerminate();
 }
