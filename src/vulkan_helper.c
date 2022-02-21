@@ -1,5 +1,14 @@
 #include "vulkan_helper.h"
 
+void create_window(Vulkan* v){
+	if(glfwInit() != GLFW_TRUE){
+		printf("Failed to initialize GLFW");
+	};
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	v->window = glfwCreateWindow(800, 600, "Our Vulkan Window", NULL, NULL);
+}
+
 VkShaderModule createShaderModule(const VkDevice* device, file_buffer buffer) {
 	VkShaderModuleCreateInfo createInfo;
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;

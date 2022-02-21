@@ -35,6 +35,7 @@ typedef struct {
 	int is_window_resized;
 } Vulkan;
 
+void create_window(Vulkan* v);
 void pick_physical_device(Vulkan* v);
 void get_graphics_queue_family_index(Vulkan* v);
 void create_logical_device(Vulkan* v);

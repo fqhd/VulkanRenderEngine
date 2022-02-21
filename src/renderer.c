@@ -1,13 +1,6 @@
 #include "renderer.h"
 
 void init_renderer(Renderer* renderer){
-	if(glfwInit() != GLFW_TRUE){
-		printf("Failed to initialize GLFW");
-	};
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-	renderer->vulkan.window = glfwCreateWindow(800, 600, "Our Vulkan Window", NULL, NULL);
-
 	// Initializing vulkan
 	create_instance(&renderer->vulkan, 1);
 	pick_physical_device(&renderer->vulkan);
