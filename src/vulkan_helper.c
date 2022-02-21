@@ -1,7 +1,8 @@
 #include "vulkan_helper.h"
 
 static void window_resize_callback(GLFWwindow* window, int width, int height) {
-	
+	Vulkan* v = glfwGetWindowUserPointer(window);
+	v->is_window_resized = 1;
 }
 
 void create_window(Vulkan* v){
@@ -11,6 +12,7 @@ void create_window(Vulkan* v){
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	v->window = glfwCreateWindow(800, 600, "Our Vulkan Window", NULL, NULL);
+	glfwSetWindowUserPointer(v->window, v);
 	glfwSetFramebufferSizeCallback(v->window, window_resize_callback);
 }
 
@@ -248,7 +250,8 @@ void draw_frame(Vulkan* v){
 	vkWaitForFences(v->logical_device, 1, &v->in_flight_fences[v->current_frame], VK_TRUE, UINT64_MAX);
 	
 	uint32_t imageIndex;
-    VkResult result = vkAcquireNextImageKHR(v->logical_device, v->swapchain, UINT64_MAX, v->image_available_semaphores[v->current_frame], VK_NULL_HANDLE, &imageIndex);
+	VkResult result;
+    result = vkAcquireNextImageKHR(v->logical_device, v->swapchain, UINT64_MAX, v->image_available_semaphores[v->current_frame], VK_NULL_HANDLE, &imageIndex);
 	if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_ERROR_OUT_OF_DATE_KHR){
 		recreate_swapchain(v);
 		return;
@@ -292,8 +295,9 @@ void draw_frame(Vulkan* v){
 	presentInfo.pResults = NULL;
 	presentInfo.pNext = NULL;
 
-	VkResult result = vkQueuePresentKHR(v->graphics_queue, &presentInfo);
+	result = vkQueuePresentKHR(v->graphics_queue, &presentInfo);
 	if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_ERROR_OUT_OF_DATE_KHR || v->is_window_resized){
+		v->is_window_resized = 0;
 		recreate_swapchain(v);
 		return;
 	}else if(result != VK_SUCCESS){

@@ -2,6 +2,7 @@
 
 void init_renderer(Renderer* renderer){
 	// Initializing vulkan
+	create_window(&renderer->vulkan);
 	create_instance(&renderer->vulkan, 1);
 	pick_physical_device(&renderer->vulkan);
 	get_graphics_queue_family_index(&renderer->vulkan);
