@@ -201,6 +201,17 @@ void pick_physical_device(Vulkan* v){
 	free(physical_devices);
 }
 
+void recreate_swapchain(Vulkan* v){
+	vkDeviceWaitIdle(v->logical_device);
+
+	create_swapchain(v);
+	create_image_views(v);
+	create_render_pass(v);
+	create_graphics_pipeline(v);
+	create_framebuffers(v);
+	create_command_buffers(v);
+}
+
 void get_graphics_queue_family_index(Vulkan* v){
 	unsigned int queue_family_count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(v->physical_device, &queue_family_count, NULL);

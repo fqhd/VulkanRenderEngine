@@ -47,6 +47,7 @@ void create_command_pool(Vulkan* v);
 void create_command_buffers(Vulkan* v);
 void create_sync_objects(Vulkan* v);
 void destroy_vulkan(Vulkan* v);
+void recreate_swapchain(Vulkan* v);
 void draw_frame(Vulkan* v);
 
 #endif
