@@ -252,7 +252,8 @@ void draw_frame(Vulkan* v){
 	uint32_t imageIndex;
 	VkResult result;
     result = vkAcquireNextImageKHR(v->logical_device, v->swapchain, UINT64_MAX, v->image_available_semaphores[v->current_frame], VK_NULL_HANDLE, &imageIndex);
-	if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_ERROR_OUT_OF_DATE_KHR){
+	if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_ERROR_OUT_OF_DATE_KHR || v->is_window_resized == 1){
+		v->is_window_resized = 0;
 		recreate_swapchain(v);
 		return;
 	}else if(result != VK_SUCCESS){
@@ -296,7 +297,7 @@ void draw_frame(Vulkan* v){
 	presentInfo.pNext = NULL;
 
 	result = vkQueuePresentKHR(v->graphics_queue, &presentInfo);
-	if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_ERROR_OUT_OF_DATE_KHR || v->is_window_resized){
+	if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_ERROR_OUT_OF_DATE_KHR || v->is_window_resized == 1){
 		v->is_window_resized = 0;
 		recreate_swapchain(v);
 		return;
@@ -313,6 +314,7 @@ void create_sync_objects(Vulkan* v){
 	v->render_finished_semaphores = malloc(sizeof(VkSemaphore) * v->num_image_views);
 	v->in_flight_fences = malloc(sizeof(VkFence) * v->num_image_views);
 	v->images_in_flight = malloc(sizeof(VkFence) * v->num_image_views);
+	printf("num image views: %i\n", v->num_image_views);
 
     VkSemaphoreCreateInfo semaphoreInfo;
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -367,6 +369,7 @@ void create_logical_device(Vulkan* v){
 }
 
 void create_instance(Vulkan* v, int validation_layers){
+	v->is_window_resized = 0;
 	VkInstanceCreateInfo create_info;
 	create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	create_info.pApplicationInfo = NULL;
@@ -634,6 +637,24 @@ void create_command_buffers(Vulkan* v) {
 
 void destroy_vulkan(Vulkan* v){
 	vkDeviceWaitIdle(v->logical_device);
+
+	for (int i = 0; i < v->num_image_views; i++) {
+		vkDestroyFramebuffer(v->logical_device, v->framebuffers[i], NULL);
+	}
+
+	vkDestroyCommandPool(v->logical_device, v->command_pool, NULL);
+
+	vkDestroyRenderPass(v->logical_device, v->render_pass, NULL);
+
+	vkDestroyPipeline(v->logical_device, v->graphics_pipeline, NULL);
+
+	vkDestroyPipelineLayout(v->logical_device, v->pipeline_layout, NULL);
+
+	for (int i = 0; i < v->num_image_views; i++) {
+		vkDestroyImageView(v->logical_device, v->image_views[i], NULL);
+	}
+
+	vkDestroySwapchainKHR(v->logical_device, v->swapchain, NULL);
 
 	for (int i = 0; i < v->num_image_views; i++) {
         vkDestroySemaphore(v->logical_device, v->image_available_semaphores[i], NULL);
