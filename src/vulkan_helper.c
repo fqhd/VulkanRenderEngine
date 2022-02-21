@@ -234,7 +234,13 @@ void draw_frame(Vulkan* v){
 	vkWaitForFences(v->logical_device, 1, &v->in_flight_fences[v->current_frame], VK_TRUE, UINT64_MAX);
 	
 	uint32_t imageIndex;
-    vkAcquireNextImageKHR(v->logical_device, v->swapchain, UINT64_MAX, v->image_available_semaphores[v->current_frame], VK_NULL_HANDLE, &imageIndex);
+    VkResult result = vkAcquireNextImageKHR(v->logical_device, v->swapchain, UINT64_MAX, v->image_available_semaphores[v->current_frame], VK_NULL_HANDLE, &imageIndex);
+	if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_ERROR_OUT_OF_DATE_KHR){
+		recreate_swapchain(v);
+		return;
+	}else if(result != VK_SUCCESS){
+		err("Failed to aquire swapchain image");
+	}
 
 	if (v->images_in_flight[imageIndex] != VK_NULL_HANDLE) {
 		vkWaitForFences(v->logical_device, 1, &v->images_in_flight[imageIndex], VK_TRUE, UINT64_MAX);
@@ -272,7 +278,13 @@ void draw_frame(Vulkan* v){
 	presentInfo.pResults = NULL;
 	presentInfo.pNext = NULL;
 
-	vkQueuePresentKHR(v->graphics_queue, &presentInfo);
+	VkResult result = vkQueuePresentKHR(v->graphics_queue, &presentInfo);
+	if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_ERROR_OUT_OF_DATE_KHR || v->is_window_resized){
+		recreate_swapchain(v);
+		return;
+	}else if(result != VK_SUCCESS){
+		err("Failed to aquire swapchain image");
+	}
 
 	v->current_frame = (v->current_frame + 1) % v->num_image_views;
 }
@@ -627,7 +639,7 @@ void cleanup_swapchain(Vulkan* v){
 		vkDestroyFramebuffer(v->logical_device, v->framebuffers[i], NULL);
 	}
 
-	vkDestroyCommandPool(v->logical_device, v->command_pool, NULL);
+	vkFreeCommandBuffers(v->logical_device, v->command_pool, v->num_image_views, v->command_buffers);
 
 	vkDestroyRenderPass(v->logical_device, v->render_pass, NULL);
 

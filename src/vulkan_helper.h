@@ -32,6 +32,7 @@ typedef struct {
 	VkFence* in_flight_fences;
 	VkFence* images_in_flight;
 	int current_frame;
+	int is_window_resized;
 } Vulkan;
 
 void pick_physical_device(Vulkan* v);
