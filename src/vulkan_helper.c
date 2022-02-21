@@ -10,7 +10,7 @@ void create_window(Vulkan* v){
 		printf("Failed to initialize GLFW");
 	};
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 	v->window = glfwCreateWindow(800, 600, "Our Vulkan Window", NULL, NULL);
 	glfwSetWindowUserPointer(v->window, v);
 	glfwSetFramebufferSizeCallback(v->window, window_resize_callback);
