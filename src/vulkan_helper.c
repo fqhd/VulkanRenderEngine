@@ -1,19 +1,12 @@
 #include "vulkan_helper.h"
 
-static void window_resize_callback(GLFWwindow* window, int width, int height) {
-	Vulkan* v = glfwGetWindowUserPointer(window);
-	v->is_window_resized = 1;
-}
-
 void create_window(Vulkan* v){
 	if(glfwInit() != GLFW_TRUE){
 		printf("Failed to initialize GLFW");
 	};
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	v->window = glfwCreateWindow(800, 600, "Our Vulkan Window", NULL, NULL);
-	glfwSetWindowUserPointer(v->window, v);
-	glfwSetFramebufferSizeCallback(v->window, window_resize_callback);
 }
 
 VkShaderModule createShaderModule(const VkDevice* device, file_buffer buffer) {
@@ -217,17 +210,6 @@ void pick_physical_device(Vulkan* v){
 	free(physical_devices);
 }
 
-void recreate_swapchain(Vulkan* v){
-	vkDeviceWaitIdle(v->logical_device);
-
-	create_swapchain(v);
-	create_image_views(v);
-	create_render_pass(v);
-	create_graphics_pipeline(v);
-	create_framebuffers(v);
-	create_command_buffers(v);
-}
-
 void get_graphics_queue_family_index(Vulkan* v){
 	unsigned int queue_family_count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(v->physical_device, &queue_family_count, NULL);
@@ -253,11 +235,7 @@ void draw_frame(Vulkan* v){
 	uint32_t imageIndex;
 	VkResult result;
     result = vkAcquireNextImageKHR(v->logical_device, v->swapchain, UINT64_MAX, v->image_available_semaphores[v->current_frame], VK_NULL_HANDLE, &imageIndex);
-	if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_ERROR_OUT_OF_DATE_KHR || v->is_window_resized == 1){
-		v->is_window_resized = 0;
-		recreate_swapchain(v);
-		return;
-	}else if(result != VK_SUCCESS){
+	if(result != VK_SUCCESS){
 		err("Failed to aquire swapchain image");
 	}
 
@@ -276,6 +254,7 @@ void draw_frame(Vulkan* v){
 	if (vkQueueSubmit(v->graphics_queue, 1, &submitInfo, v->in_flight_fences[v->current_frame]) != VK_SUCCESS) {
 		err("Failed to submit to graphics queue");
 	}
+
 	VkPresentInfoKHR presentInfo;
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount = 1;
@@ -288,11 +267,7 @@ void draw_frame(Vulkan* v){
 	presentInfo.pNext = NULL;
 
 	result = vkQueuePresentKHR(v->graphics_queue, &presentInfo);
-	if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_ERROR_OUT_OF_DATE_KHR || v->is_window_resized == 1){
-		v->is_window_resized = 0;
-		recreate_swapchain(v);
-		return;
-	}else if(result != VK_SUCCESS){
+	if(result != VK_SUCCESS){
 		err("Failed to aquire swapchain image");
 	}
 
@@ -357,7 +332,6 @@ void create_logical_device(Vulkan* v){
 }
 
 void create_instance(Vulkan* v, int validation_layers){
-	v->is_window_resized = 0;
 	VkInstanceCreateInfo create_info;
 	create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	create_info.pApplicationInfo = NULL;
@@ -658,25 +632,4 @@ void destroy_vulkan(Vulkan* v){
 
 	glfwDestroyWindow(v->window);
 	glfwTerminate();
-}
-
-
-void cleanup_swapchain(Vulkan* v){
-	for (int i = 0; i < v->num_image_views; i++) {
-		vkDestroyFramebuffer(v->logical_device, v->framebuffers[i], NULL);
-	}
-
-	vkFreeCommandBuffers(v->logical_device, v->command_pool, v->num_image_views, v->command_buffers);
-
-	vkDestroyRenderPass(v->logical_device, v->render_pass, NULL);
-
-	vkDestroyPipeline(v->logical_device, v->graphics_pipeline, NULL);
-
-	vkDestroyPipelineLayout(v->logical_device, v->pipeline_layout, NULL);
-
-	for (int i = 0; i < v->num_image_views; i++) {
-		vkDestroyImageView(v->logical_device, v->image_views[i], NULL);
-	}
-
-	vkDestroySwapchainKHR(v->logical_device, v->swapchain, NULL);
 }

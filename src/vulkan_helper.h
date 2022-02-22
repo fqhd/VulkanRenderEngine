@@ -31,7 +31,6 @@ typedef struct {
 	VkSemaphore* render_finished_semaphores;
 	VkFence* in_flight_fences;
 	int current_frame;
-	int is_window_resized;
 } Vulkan;
 
 void create_window(Vulkan* v);
