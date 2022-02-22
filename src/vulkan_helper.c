@@ -1,5 +1,22 @@
 #include "vulkan_helper.h"
 
+void init_vulkan(Vulkan* v){
+	create_window(v);
+	create_instance(v, 1);
+	pick_physical_device(v);
+	get_graphics_queue_family_index(v);
+	create_logical_device(v);
+	glfwCreateWindowSurface(v->instance, v->window, NULL, &v->surface);
+	create_swapchain(v);
+	create_image_views(v);
+	create_render_pass(v);
+	create_graphics_pipeline(v);
+	create_framebuffers(v);
+	create_command_pool(v);
+	create_command_buffers(v);
+	create_sync_objects(v);
+}
+
 void create_window(Vulkan* v){
 	if(glfwInit() != GLFW_TRUE){
 		printf("Failed to initialize GLFW");
