@@ -247,11 +247,11 @@ void get_graphics_queue_family_index(Vulkan* v){
 
 void draw_frame(Vulkan* v){
 	vkWaitForFences(v->logical_device, 1, &v->in_flight_fences[v->current_frame], VK_TRUE, UINT64_MAX);
-    vkResetFences(v->logical_device, 1, &v->in_flight_fences[v->current_frame]);
+	vkResetFences(v->logical_device, 1, &v->in_flight_fences[v->current_frame]);
 	
 	uint32_t imageIndex;
 	VkResult result;
-    result = vkAcquireNextImageKHR(v->logical_device, v->swapchain, UINT64_MAX, v->image_available_semaphores[v->current_frame], VK_NULL_HANDLE, &imageIndex);
+	result = vkAcquireNextImageKHR(v->logical_device, v->swapchain, UINT64_MAX, v->image_available_semaphores[v->current_frame], VK_NULL_HANDLE, &imageIndex);
 	if(result != VK_SUCCESS){
 		err("Failed to aquire swapchain image");
 	}
@@ -297,13 +297,13 @@ void create_sync_objects(Vulkan* v){
 	v->render_finished_semaphores = malloc(sizeof(VkSemaphore) * v->num_image_views);
 	v->in_flight_fences = malloc(sizeof(VkFence) * v->num_image_views);
 
-    VkSemaphoreCreateInfo semaphoreInfo;
-    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	VkSemaphoreCreateInfo semaphoreInfo;
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 	semaphoreInfo.pNext = NULL;
 	semaphoreInfo.flags = 0;
 
 	VkFenceCreateInfo fenceInfo;
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceInfo.pNext = NULL;
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
@@ -636,10 +636,10 @@ void destroy_vulkan(Vulkan* v){
 	vkDestroySwapchainKHR(v->logical_device, v->swapchain, NULL);
 
 	for (int i = 0; i < v->num_image_views; i++) {
-        vkDestroySemaphore(v->logical_device, v->image_available_semaphores[i], NULL);
-        vkDestroySemaphore(v->logical_device, v->render_finished_semaphores[i], NULL);
+		vkDestroySemaphore(v->logical_device, v->image_available_semaphores[i], NULL);
+		vkDestroySemaphore(v->logical_device, v->render_finished_semaphores[i], NULL);
 		vkDestroyFence(v->logical_device, v->in_flight_fences[i], NULL);
-    }
+	}
 
 	vkDestroyDevice(v->logical_device, NULL);
 
