@@ -24,7 +24,7 @@ void free_file(file_buffer* buffer){
 }
 
 void err(const char* msg){
-	printf("--------------- INTERNAL ERROR -----------------\n");
+	printf("-------------------- ERROR ---------------------\n");
 	printf("%s\n", msg);
 	printf("------------------------------------------------\n");
 }
