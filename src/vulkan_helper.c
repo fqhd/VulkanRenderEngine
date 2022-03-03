@@ -230,7 +230,7 @@ void create_graphics_pipeline(Vulkan* v){
 }
 
 void pick_physical_device(Vulkan* v){
-	unsigned int physical_device_count;
+	uint32_t physical_device_count;
 	vkEnumeratePhysicalDevices(v->instance, &physical_device_count, NULL);
 	VkPhysicalDevice* physical_devices = malloc(sizeof(VkPhysicalDeviceProperties) * physical_device_count);
 	vkEnumeratePhysicalDevices(v->instance, &physical_device_count, physical_devices);
@@ -244,7 +244,7 @@ void pick_physical_device(Vulkan* v){
 }
 
 void get_graphics_queue_family_index(Vulkan* v){
-	unsigned int queue_family_count = 0;
+	uint32_t queue_family_count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(v->physical_device, &queue_family_count, NULL);
 	VkQueueFamilyProperties* queue_families = malloc(sizeof(VkQueueFamilyProperties) * queue_family_count);
 	vkGetPhysicalDeviceQueueFamilyProperties(v->physical_device, &queue_family_count, queue_families);
@@ -252,7 +252,7 @@ void get_graphics_queue_family_index(Vulkan* v){
 		err("Found no queue families in physical device");
 	}
 
-	for(unsigned int i = 0; i < queue_family_count; i++){
+	for(uint32_t i = 0; i < queue_family_count; i++){
 		if(queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT){
 			v->graphics_queue_index = i;
 		}
@@ -364,19 +364,19 @@ void create_logical_device(Vulkan* v){
 	vkGetDeviceQueue(v->logical_device, v->graphics_queue_index, 0, &v->graphics_queue);
 }
 
-void create_instance(Vulkan* v, int validation_layers){
+void create_instance(Vulkan* v, uint8_t validation_layers){
 	VkInstanceCreateInfo create_info;
 	create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	create_info.pApplicationInfo = NULL;
 
 	// Copying GLFW extensions as well as our custom extensions into a pp extension names array
-	unsigned int glfw_extension_count = 0;
+	uint32_t glfw_extension_count = 0;
 	const char** glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
 	if(glfw_extensions == NULL){
 		err("Failed to get glfw extensions");
 	}
 
-	unsigned int total_extension_count = glfw_extension_count + 1;
+	uint32_t total_extension_count = glfw_extension_count + 1;
 	const char** total_extensions = malloc(sizeof(const char*) * total_extension_count);
 	memcpy(total_extensions, glfw_extensions, sizeof(const char*) * glfw_extension_count);
 	total_extensions[total_extension_count - 1] = "VK_KHR_get_physical_device_properties2";
@@ -405,14 +405,14 @@ void create_swapchain(Vulkan* v){
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(v->physical_device, v->surface, &v->capabilities);
 
 	// Get supported swapchain image formats
-	unsigned int format_count = 0;
+	uint32_t format_count = 0;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(v->physical_device, v->surface, &format_count, NULL);
 	VkSurfaceFormatKHR* formats = malloc(sizeof(VkSurfaceFormatKHR) * format_count);
 	vkGetPhysicalDeviceSurfaceFormatsKHR(v->physical_device, v->surface, &format_count, formats);
 
 	// Picking the right surface format
 	VkSurfaceFormatKHR format;
-	for(unsigned int i = 0; i < format_count; i++){
+	for(uint32_t i = 0; i < format_count; i++){
 		if(formats[i].format == VK_FORMAT_B8G8R8A8_SRGB && formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR){
 			format = formats[i];
 		}
@@ -421,7 +421,7 @@ void create_swapchain(Vulkan* v){
 	VkExtent2D extent = v->capabilities.currentExtent;
 	VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
 
-	unsigned int image_count = v->capabilities.minImageCount + 1;
+	uint32_t image_count = v->capabilities.minImageCount + 1;
 	if(v->capabilities.maxImageCount > 0 && image_count > v->capabilities.maxImageCount){
 		image_count = v->capabilities.maxImageCount;
 	}
@@ -453,7 +453,7 @@ void create_swapchain(Vulkan* v){
 }
 
 void create_image_views(Vulkan* v){
-	unsigned int image_count;
+	uint32_t image_count;
 	vkGetSwapchainImagesKHR(v->logical_device, v->swapchain, &image_count, NULL);
 	VkImage* images = malloc(sizeof(VkImage) * image_count);
 	vkGetSwapchainImagesKHR(v->logical_device, v->swapchain, &image_count, images);
@@ -461,7 +461,7 @@ void create_image_views(Vulkan* v){
 
 	v->image_views = malloc(sizeof(VkImageView) * image_count);
 
-	for(unsigned int i = 0; i < image_count; i++){
+	for(uint32_t i = 0; i < image_count; i++){
 		VkImageViewCreateInfo create_info;
 		create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		create_info.image = images[i];

@@ -43,7 +43,7 @@ void create_window(Vulkan* v);
 void pick_physical_device(Vulkan* v);
 void get_graphics_queue_family_index(Vulkan* v);
 void create_logical_device(Vulkan* v);
-void create_instance(Vulkan* v, int validation_layers);
+void create_instance(Vulkan* v, uint8_t validation_layers);
 void create_swapchain(Vulkan* v);
 void create_image_views(Vulkan* v);
 void create_render_pass(Vulkan* v);
