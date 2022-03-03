@@ -86,7 +86,7 @@ void create_graphics_pipeline(Vulkan* v){
 	bindings[0].format = VK_FORMAT_R32G32_SFLOAT;
 
 	bindings[1].offset = offsetof(Vertex, color);
-	bindings[1].location = 0;
+	bindings[1].location = 1;
 	bindings[1].binding = 0;
 	bindings[1].format = VK_FORMAT_R32G32B32_SFLOAT;
 	
