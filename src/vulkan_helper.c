@@ -13,8 +13,60 @@ void init_vulkan(Vulkan* v){
 	create_graphics_pipeline(v);
 	create_framebuffers(v);
 	create_command_pool(v);
+	create_vertex_buffer(v);
 	create_command_buffers(v);
 	create_sync_objects(v);
+}
+
+uint32_t findMemoryType(Vulkan* v, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+	VkPhysicalDeviceMemoryProperties memory_properties;
+	vkGetPhysicalDeviceMemoryProperties(v->physical_device, &memory_properties);
+	for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++) {
+		if ((typeFilter & (1 << i)) && (memory_properties.memoryTypes[i].propertyFlags & properties) == properties) {
+			return i;
+		}
+	}
+}
+
+void create_vertex_buffer(Vulkan* v){
+	VkBufferCreateInfo create_info;
+	create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	create_info.pNext = NULL;
+	create_info.flags = 0;
+	create_info.size = 3 * sizeof(float) * 5;
+	create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	if(vkCreateBuffer(v->logical_device, &create_info, NULL, &v->vertex_buffer) != VK_SUCCESS){
+		err("Failed to create vertex buffer");
+	}
+
+	VkMemoryRequirements memory_requirements;
+	vkGetBufferMemoryRequirements(v->logical_device, v->vertex_buffer, &memory_requirements);
+
+	VkMemoryAllocateInfo alloc_info;
+	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc_info.allocationSize = memory_requirements.size;
+	alloc_info.memoryTypeIndex = findMemoryType(v, memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	if (vkAllocateMemory(v->logical_device, &alloc_info, NULL, &v->vertex_buffer_memory) != VK_SUCCESS) {
+		err("Failed to allocate memory for vertex buffer");
+	}
+
+	vkBindBufferMemory(v->logical_device, v->vertex_buffer, v->vertex_buffer_memory, 0);
+
+	// Uploading the data
+	float vertices[] = {
+		// Position          Color
+		0.0f, 0.0f,          0.0f, 1.0f, 0.0f,
+		1.0f, 0.0f,          1.0f, 0.0f, 0.0f,
+		1.0f, 1.0f,          0.0f, 0.0f, 1.0f,
+	};
+
+	void* data;
+	vkMapMemory(v->logical_device, v->vertex_buffer_memory, 0, create_info.size, 0, &data);
+	memcpy(data, vertices, create_info.size);
+	vkUnmapMemory(v->logical_device, v->vertex_buffer_memory);
 }
 
 void create_window(Vulkan* v){
@@ -75,17 +127,17 @@ void create_graphics_pipeline(Vulkan* v){
 	VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
 	VkVertexInputBindingDescription binding_description;
-	binding_description.stride = sizeof(Vertex);
+	binding_description.stride = sizeof(float) * 5;
 	binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 	binding_description.binding = 0;
 
 	VkVertexInputAttributeDescription bindings[2];
-	bindings[0].offset = offsetof(Vertex, position);
+	bindings[0].offset = 0;
 	bindings[0].location = 0;
 	bindings[0].binding = 0;
 	bindings[0].format = VK_FORMAT_R32G32_SFLOAT;
 
-	bindings[1].offset = offsetof(Vertex, color);
+	bindings[1].offset = sizeof(float) * 2;
 	bindings[1].location = 1;
 	bindings[1].binding = 0;
 	bindings[1].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -632,6 +684,9 @@ void create_command_buffers(Vulkan* v) {
 
 void destroy_vulkan(Vulkan* v){
 	vkDeviceWaitIdle(v->logical_device);
+
+	vkDestroyBuffer(v->logical_device, v->vertex_buffer, NULL);
+	vkFreeMemory(v->logical_device, v->vertex_buffer_memory, NULL);
 
 	for (int i = 0; i < v->num_image_views; i++) {
 		vkDestroyFramebuffer(v->logical_device, v->framebuffers[i], NULL);

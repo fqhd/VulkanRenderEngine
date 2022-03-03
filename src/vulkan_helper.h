@@ -8,12 +8,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include "utils.h"
-#include <cglm/cglm.h>
-
-typedef struct {
-	vec2 position;
-	vec3 color;
-} Vertex;
 
 typedef struct {
 	GLFWwindow* window;
@@ -37,6 +31,8 @@ typedef struct {
 	VkSemaphore* render_finished_semaphores;
 	VkFence* in_flight_fences;
 	int current_frame;
+	VkBuffer vertex_buffer;
+	VkDeviceMemory vertex_buffer_memory;
 } Vulkan;
 
 void create_window(Vulkan* v);
@@ -56,6 +52,7 @@ void destroy_vulkan(Vulkan* v);
 void recreate_swapchain(Vulkan* v);
 void draw_frame(Vulkan* v);
 void cleanup_swapchain(Vulkan* v);
+void create_vertex_buffer(Vulkan* v);
 void init_vulkan(Vulkan* v);
 
 #endif
