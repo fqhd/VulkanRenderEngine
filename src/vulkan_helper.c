@@ -26,6 +26,8 @@ uint32_t findMemoryType(Vulkan* v, uint32_t typeFilter, VkMemoryPropertyFlags pr
 			return i;
 		}
 	}
+	err("Failed to find memory type");
+	return 0;
 }
 
 void create_vertex_buffer(Vulkan* v){
@@ -48,6 +50,7 @@ void create_vertex_buffer(Vulkan* v){
 	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	alloc_info.allocationSize = memory_requirements.size;
 	alloc_info.memoryTypeIndex = findMemoryType(v, memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	alloc_info.pNext = NULL;
 
 	if (vkAllocateMemory(v->logical_device, &alloc_info, NULL, &v->vertex_buffer_memory) != VK_SUCCESS) {
 		err("Failed to allocate memory for vertex buffer");
@@ -671,6 +674,9 @@ void create_command_buffers(Vulkan* v) {
 		vkCmdBeginRenderPass(v->command_buffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		vkCmdBindPipeline(v->command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, v->graphics_pipeline);
+		
+		VkDeviceSize offset = {0};
+		vkCmdBindVertexBuffers(v->command_buffers[i], 0, 1, &v->vertex_buffer, &offset);
 
 		vkCmdDraw(v->command_buffers[i], 3, 1, 0, 0);
 
