@@ -8,6 +8,12 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include "utils.h"
+#include <cglm/cglm.h>
+
+typedef struct {
+	vec2 position;
+	vec3 color;
+} Vertex;
 
 typedef struct {
 	GLFWwindow* window;

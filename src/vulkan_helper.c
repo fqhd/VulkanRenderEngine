@@ -73,14 +73,30 @@ void create_graphics_pipeline(Vulkan* v){
 	fragShaderStageInfo.pSpecializationInfo = NULL;
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+	VkVertexInputBindingDescription binding_description;
+	binding_description.stride = sizeof(Vertex);
+	binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	binding_description.binding = 0;
+
+	VkVertexInputAttributeDescription bindings[2];
+	bindings[0].offset = offsetof(Vertex, position);
+	bindings[0].location = 0;
+	bindings[0].binding = 0;
+	bindings[0].format = VK_FORMAT_R32G32_SFLOAT;
+
+	bindings[1].offset = offsetof(Vertex, color);
+	bindings[1].location = 0;
+	bindings[1].binding = 0;
+	bindings[1].format = VK_FORMAT_R32G32B32_SFLOAT;
 	
 	// Describing the vertex data
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo;
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 0;
-	vertexInputInfo.pVertexBindingDescriptions = NULL; // Optional
-	vertexInputInfo.vertexAttributeDescriptionCount = 0;
-	vertexInputInfo.pVertexAttributeDescriptions = NULL; // Optional
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.pVertexBindingDescriptions = &binding_description;
+	vertexInputInfo.vertexAttributeDescriptionCount = 2;
+	vertexInputInfo.pVertexAttributeDescriptions = bindings;
 	vertexInputInfo.pNext = NULL;
 	vertexInputInfo.flags = 0;
 
