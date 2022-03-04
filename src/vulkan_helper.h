@@ -33,6 +33,8 @@ typedef struct {
 	int current_frame;
 	VkBuffer vertex_buffer;
 	VkDeviceMemory vertex_buffer_memory;
+	VkBuffer index_buffer;
+	VkDeviceMemory index_buffer_memory;
 } Vulkan;
 
 void create_window(Vulkan* v);
@@ -53,6 +55,7 @@ void recreate_swapchain(Vulkan* v);
 void draw_frame(Vulkan* v);
 void cleanup_swapchain(Vulkan* v);
 void create_vertex_buffer(Vulkan* v);
+void create_index_buffer(Vulkan* v);
 void init_vulkan(Vulkan* v);
 
 #endif

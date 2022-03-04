@@ -14,6 +14,7 @@ void init_vulkan(Vulkan* v){
 	create_framebuffers(v);
 	create_command_pool(v);
 	create_vertex_buffer(v);
+	create_index_buffer(v);
 	create_command_buffers(v);
 	create_sync_objects(v);
 }
@@ -118,6 +119,29 @@ void create_vertex_buffer(Vulkan* v){
 
     vkDestroyBuffer(v->logical_device, staging_buffer, NULL);
     vkFreeMemory(v->logical_device, staging_memory, NULL);
+}
+
+void create_index_buffer(Vulkan* v){
+	VkBuffer staging_buffer;
+	VkDeviceMemory staging_memory;
+	VkDeviceSize size = sizeof(uint16_t) * 3;
+	create_buffer(v, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer, &staging_memory);
+
+	// Uploading the data
+	uint16_t indices[] = {
+		0, 1, 2
+	};
+	void* data;
+    vkMapMemory(v->logical_device, staging_memory, 0, size, 0, &data);
+    memcpy(data, indices, size);
+    vkUnmapMemory(v->logical_device, staging_memory);
+
+	create_buffer(v, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &v->index_buffer, &v->index_buffer_memory);
+
+	copy_buffer(v, staging_buffer, v->index_buffer, size);
+
+	vkDestroyBuffer(v->logical_device, staging_buffer, NULL);
+	vkFreeMemory(v->logical_device, staging_memory, NULL);
 }
 
 void create_window(Vulkan* v){
@@ -724,9 +748,12 @@ void create_command_buffers(Vulkan* v) {
 		vkCmdBindPipeline(v->command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, v->graphics_pipeline);
 		
 		VkDeviceSize offset = {0};
+		
 		vkCmdBindVertexBuffers(v->command_buffers[i], 0, 1, &v->vertex_buffer, &offset);
 
-		vkCmdDraw(v->command_buffers[i], 3, 1, 0, 0);
+		vkCmdBindIndexBuffer(v->command_buffers[i], v->index_buffer, 0, VK_INDEX_TYPE_UINT16);
+
+		vkCmdDrawIndexed(v->command_buffers[i], 3, 1, 0, 0, 0);
 
 		vkCmdEndRenderPass(v->command_buffers[i]);
 
@@ -738,6 +765,9 @@ void create_command_buffers(Vulkan* v) {
 
 void destroy_vulkan(Vulkan* v){
 	vkDeviceWaitIdle(v->logical_device);
+
+	vkDestroyBuffer(v->logical_device, v->index_buffer, NULL);
+	vkFreeMemory(v->logical_device, v->index_buffer_memory, NULL);
 
 	vkDestroyBuffer(v->logical_device, v->vertex_buffer, NULL);
 	vkFreeMemory(v->logical_device, v->vertex_buffer_memory, NULL);
