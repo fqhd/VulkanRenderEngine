@@ -18,7 +18,7 @@ void init_vulkan(Vulkan* v){
 	create_sync_objects(v);
 }
 
-uint32_t findMemoryType(Vulkan* v, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+uint32_t find_memory_type(Vulkan* v, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 	VkPhysicalDeviceMemoryProperties memory_properties;
 	vkGetPhysicalDeviceMemoryProperties(v->physical_device, &memory_properties);
 	for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++) {
@@ -30,34 +30,76 @@ uint32_t findMemoryType(Vulkan* v, uint32_t typeFilter, VkMemoryPropertyFlags pr
 	return 0;
 }
 
-void create_vertex_buffer(Vulkan* v){
+void create_buffer(Vulkan* v, VkDeviceSize size, VkBufferUsageFlags usage_flags, uint32_t memory_flags, VkBuffer* buffer, VkDeviceMemory* memory){
 	VkBufferCreateInfo create_info;
 	create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	create_info.pNext = NULL;
 	create_info.flags = 0;
-	create_info.size = 3 * sizeof(float) * 5;
-	create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	create_info.size = size;
+	create_info.usage = usage_flags;
 	create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	if(vkCreateBuffer(v->logical_device, &create_info, NULL, &v->vertex_buffer) != VK_SUCCESS){
+	
+	if(vkCreateBuffer(v->logical_device, &create_info, NULL, buffer) != VK_SUCCESS){
 		err("Failed to create vertex buffer");
 	}
 
 	VkMemoryRequirements memory_requirements;
-	vkGetBufferMemoryRequirements(v->logical_device, v->vertex_buffer, &memory_requirements);
+	vkGetBufferMemoryRequirements(v->logical_device, *buffer, &memory_requirements);
 
 	VkMemoryAllocateInfo alloc_info;
 	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	alloc_info.allocationSize = memory_requirements.size;
-	alloc_info.memoryTypeIndex = findMemoryType(v, memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	alloc_info.memoryTypeIndex = find_memory_type(v, memory_requirements.memoryTypeBits, memory_flags);
 	alloc_info.pNext = NULL;
 
-	if (vkAllocateMemory(v->logical_device, &alloc_info, NULL, &v->vertex_buffer_memory) != VK_SUCCESS) {
+	if (vkAllocateMemory(v->logical_device, &alloc_info, NULL, memory) != VK_SUCCESS) {
 		err("Failed to allocate memory for vertex buffer");
 	}
 
-	vkBindBufferMemory(v->logical_device, v->vertex_buffer, v->vertex_buffer_memory, 0);
+	vkBindBufferMemory(v->logical_device, *buffer, *memory, 0);
+}
 
+void copy_buffer(Vulkan* v, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+	VkCommandBufferAllocateInfo alloc_info = {0};
+    alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    alloc_info.commandPool = v->command_pool;
+    alloc_info.commandBufferCount = 1;
+
+    VkCommandBuffer command_buffer;
+    vkAllocateCommandBuffers(v->logical_device, &alloc_info, &command_buffer);
+
+	VkCommandBufferBeginInfo begin_info = {0};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(command_buffer, &begin_info);
+
+	VkBufferCopy copy_region = {0};
+	copy_region.srcOffset = 0; // Optional
+	copy_region.dstOffset = 0; // Optional
+	copy_region.size = size;
+	vkCmdCopyBuffer(command_buffer, srcBuffer, dstBuffer, 1, &copy_region);
+
+	vkEndCommandBuffer(command_buffer);
+
+	VkSubmitInfo submit_info = {0};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &command_buffer;
+
+	vkQueueSubmit(v->graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+	vkQueueWaitIdle(v->graphics_queue);
+
+	vkFreeCommandBuffers(v->logical_device, v->command_pool, 1, &command_buffer);
+}
+
+void create_vertex_buffer(Vulkan* v){
+	VkDeviceSize size = 3 * sizeof(float) * 5;
+	VkBuffer staging_buffer;
+	VkDeviceMemory staging_memory;
+	create_buffer(v, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer, &staging_memory);
+	
 	// Uploading the data
 	float vertices[] = {
 		// Position          Color
@@ -67,9 +109,15 @@ void create_vertex_buffer(Vulkan* v){
 	};
 
 	void* data;
-	vkMapMemory(v->logical_device, v->vertex_buffer_memory, 0, create_info.size, 0, &data);
-	memcpy(data, vertices, create_info.size);
-	vkUnmapMemory(v->logical_device, v->vertex_buffer_memory);
+	vkMapMemory(v->logical_device, staging_memory, 0, size, 0, &data);
+	memcpy(data, vertices, size);
+	vkUnmapMemory(v->logical_device, staging_memory);
+	create_buffer(v, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &v->vertex_buffer, &v->vertex_buffer_memory);
+
+	copy_buffer(v, staging_buffer, v->vertex_buffer, size);
+
+    vkDestroyBuffer(v->logical_device, staging_buffer, NULL);
+    vkFreeMemory(v->logical_device, staging_memory, NULL);
 }
 
 void create_window(Vulkan* v){
