@@ -69,5 +69,7 @@ void create_index_buffer(Vulkan* v);
 void init_vulkan(Vulkan* v);
 void create_descriptor_layout(Vulkan* v);
 void create_uniform_buffers(Vulkan* v);
+void create_buffer(Vulkan* v, VkDeviceSize size, VkBufferUsageFlags usage_flags, uint32_t memory_flags, VkBuffer* buffer, VkDeviceMemory* memory);
+void copy_buffer(Vulkan* v, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
 #endif
