@@ -15,8 +15,20 @@ void init_vulkan(Vulkan* v){
 	create_command_pool(v);
 	create_vertex_buffer(v);
 	create_index_buffer(v);
+	create_uniform_buffers(v);
 	create_command_buffers(v);
 	create_sync_objects(v);
+}
+
+void create_uniform_buffers(Vulkan* v){
+	VkDeviceSize bufferSize = sizeof(MVP);
+
+	v->uniform_buffers = malloc(v->num_image_views * sizeof(VkBuffer));
+	v->uniform_buffers_memory = malloc(v->num_image_views * sizeof(VkDeviceSize));
+
+    for (size_t i = 0; i < v->num_image_views; i++) {
+        create_buffer(v, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, v->uniform_buffers + i, v->uniform_buffers_memory + i);
+    }
 }
 
 uint32_t find_memory_type(Vulkan* v, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
@@ -315,8 +327,8 @@ void create_graphics_pipeline(Vulkan* v){
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo;
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 0; // Optional
-	pipelineLayoutInfo.pSetLayouts = NULL; // Optional
+	pipelineLayoutInfo.setLayoutCount = 1; // Optional
+	pipelineLayoutInfo.pSetLayouts = &v->descriptor_layout; // Optional
 	pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
 	pipelineLayoutInfo.pPushConstantRanges = NULL; // Optional
 	pipelineLayoutInfo.pNext = NULL; // Optional
@@ -354,6 +366,23 @@ void create_graphics_pipeline(Vulkan* v){
 	// Don't need the shaders after pipeline creation is complete
 	vkDestroyShaderModule(v->logical_device, fragShaderModule, NULL);
 	vkDestroyShaderModule(v->logical_device, vertShaderModule, NULL);
+}
+
+void create_descriptor_layout(Vulkan* v){
+	VkDescriptorSetLayoutBinding uboLayoutBinding = {0};
+	uboLayoutBinding.binding = 0;
+	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboLayoutBinding.descriptorCount = 1;
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	VkDescriptorSetLayoutCreateInfo layoutInfo = {0};
+	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutInfo.bindingCount = 1;
+	layoutInfo.pBindings = &uboLayoutBinding;
+
+	if (vkCreateDescriptorSetLayout(v->logical_device, &layoutInfo, NULL, &v->descriptor_layout) != VK_SUCCESS) {
+		err("Failed to create descriptor layout object");
+	}
 }
 
 void pick_physical_device(Vulkan* v){
@@ -764,7 +793,14 @@ void create_command_buffers(Vulkan* v) {
 }
 
 void destroy_vulkan(Vulkan* v){
+	for (size_t i = 0; i < v->num_image_views; i++) {
+        vkDestroyBuffer(v->logical_device, v->uniform_buffers[i], NULL);
+        vkFreeMemory(v->logical_device, v->uniform_buffers_memory[i], NULL);
+    }
+
 	vkDeviceWaitIdle(v->logical_device);
+
+	vkDestroyDescriptorSetLayout(v->logical_device, v->descriptor_layout, NULL);
 
 	vkDestroyBuffer(v->logical_device, v->index_buffer, NULL);
 	vkFreeMemory(v->logical_device, v->index_buffer_memory, NULL);

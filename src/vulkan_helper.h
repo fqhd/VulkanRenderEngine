@@ -8,6 +8,13 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include "utils.h"
+#include <cglm/cglm.h>
+
+typedef struct {
+	mat4 model;
+	mat4 view;
+	mat4 projection;
+} MVP;
 
 typedef struct {
 	GLFWwindow* window;
@@ -35,6 +42,9 @@ typedef struct {
 	VkDeviceMemory vertex_buffer_memory;
 	VkBuffer index_buffer;
 	VkDeviceMemory index_buffer_memory;
+	VkDescriptorSetLayout descriptor_layout;
+	VkBuffer* uniform_buffers;
+	VkDeviceMemory* uniform_buffers_memory;
 } Vulkan;
 
 void create_window(Vulkan* v);
@@ -57,5 +67,7 @@ void cleanup_swapchain(Vulkan* v);
 void create_vertex_buffer(Vulkan* v);
 void create_index_buffer(Vulkan* v);
 void init_vulkan(Vulkan* v);
+void create_descriptor_layout(Vulkan* v);
+void create_uniform_buffers(Vulkan* v);
 
 #endif
