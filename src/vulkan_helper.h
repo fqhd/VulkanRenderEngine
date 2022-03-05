@@ -45,6 +45,7 @@ typedef struct {
 	VkDescriptorSetLayout descriptor_layout;
 	VkBuffer* uniform_buffers;
 	VkDeviceMemory* uniform_buffers_memory;
+	MVP mvp;
 } Vulkan;
 
 void create_window(Vulkan* v);

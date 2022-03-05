@@ -1,4 +1,6 @@
 #include "vulkan_helper.h"
+#include <cglm/mat4.h>
+#include <time.h>
 
 void init_vulkan(Vulkan* v){
 	create_window(v);
@@ -10,6 +12,7 @@ void init_vulkan(Vulkan* v){
 	create_swapchain(v);
 	create_image_views(v);
 	create_render_pass(v);
+	create_descriptor_layout(v);
 	create_graphics_pipeline(v);
 	create_framebuffers(v);
 	create_command_pool(v);
@@ -417,6 +420,31 @@ void get_graphics_queue_family_index(Vulkan* v){
 	free(queue_families);
 }
 
+static float last_time = 0.0f;
+void update_uniform_buffer(Vulkan* v, uint32_t imageIndex){
+	float time = clock() / (float)CLOCKS_PER_SEC;
+	float dt = time - last_time;
+	last_time = time;
+
+	// Rotate the model matrix
+	glm_mat4_identity(v->mvp.model);
+	// float axis[] = {0.0f, 1.0f, 0.0f};
+	// glm_rotate(v->mvp.model, dt * M_PI / 2.0f, axis);
+
+	float eye[] = {2.0f, 2.0f, 2.0f};
+	float center[] = {0.0f, 0.0f, 0.0f};
+	float up[] = {0.0f, 0.0f, 1.0f};
+	glm_lookat(eye, center, up, v->mvp.view);
+
+	glm_perspective(M_PI / 2.0f, 800 / 600.0f, 0.1f, 1000.0f, v->mvp.projection);
+	v->mvp.projection[1][1] *= -1;
+
+	void* data;
+	vkMapMemory(v->logical_device, v->uniform_buffers_memory[v->current_frame], 0, sizeof(v->mvp), 0, &data);
+	memcpy(data, &v->uniform_buffers_memory[v->current_frame], sizeof(v->mvp));
+	vkUnmapMemory(v->logical_device, v->uniform_buffers_memory[v->current_frame]);
+}
+
 void draw_frame(Vulkan* v){
 	vkWaitForFences(v->logical_device, 1, &v->in_flight_fences[v->current_frame], VK_TRUE, UINT64_MAX);
 	vkResetFences(v->logical_device, 1, &v->in_flight_fences[v->current_frame]);
@@ -427,6 +455,8 @@ void draw_frame(Vulkan* v){
 	if(result != VK_SUCCESS){
 		err("Failed to aquire swapchain image");
 	}
+
+	update_uniform_buffer(v, imageIndex);
 
 	VkSubmitInfo submitInfo;
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
