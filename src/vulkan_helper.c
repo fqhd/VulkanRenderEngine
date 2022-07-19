@@ -2,6 +2,25 @@
 #include <cglm/mat4.h>
 #include <time.h>
 
+void create_instance(Vulkan* v, uint8_t validation_layers);
+void pick_physical_device(Vulkan* v);
+void get_graphics_queue_family_index(Vulkan* v);
+void create_graphics_pipeline(Vulkan* v);
+void create_logical_device(Vulkan* v);
+void create_swapchain(Vulkan* v);
+void create_image_views(Vulkan* v);
+void create_render_pass(Vulkan* v);
+void create_descriptor_layout(Vulkan* v);
+void create_framebuffers(Vulkan* v);
+void create_command_pool(Vulkan* v);
+void create_command_buffers(Vulkan* v);
+void create_sync_objects(Vulkan* v);
+void create_window(Vulkan* v);
+void create_vertex_buffer(Vulkan* v, Vertex* vertices, uint32_t numVertices, VkBuffer* buffer, VkDeviceMemory* memory);
+void create_index_buffer(Vulkan* v, uint32_t* indices, uint32_t numIndices, VkBuffer* buffer, VkDeviceMemory* memory);
+void create_buffer(Vulkan* v, VkDeviceSize size, VkBufferUsageFlags usage_flags, uint32_t memory_flags, VkBuffer* buffer, VkDeviceMemory* memory);
+void copy_buffer(Vulkan* v, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+
 void init_vulkan(Vulkan* v){
 	create_window(v);
 	create_instance(v, 1);
@@ -16,8 +35,6 @@ void init_vulkan(Vulkan* v){
 	create_graphics_pipeline(v);
 	create_framebuffers(v);
 	create_command_pool(v);
-	create_vertex_buffer(v);
-	create_index_buffer(v);
 	create_uniform_buffers(v);
 	create_command_buffers(v);
 	create_sync_objects(v);
@@ -110,50 +127,39 @@ void copy_buffer(Vulkan* v, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize
 	vkFreeCommandBuffers(v->logical_device, v->command_pool, 1, &command_buffer);
 }
 
-void create_vertex_buffer(Vulkan* v){
-	VkDeviceSize size = 3 * sizeof(float) * 5;
+void create_vertex_buffer(Vulkan* v, Vertex* vertices, uint32_t numVertices, VkBuffer* buffer, VkDeviceMemory* memory){
+	VkDeviceSize size = numVertices * sizeof(Vertex);
 	VkBuffer staging_buffer;
 	VkDeviceMemory staging_memory;
 	create_buffer(v, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer, &staging_memory);
-	
-	// Uploading the data
-	float vertices[] = {
-		// Position          Color
-		0.0f, 0.0f,          0.0f, 1.0f, 0.0f,
-		1.0f, 0.0f,          1.0f, 0.0f, 0.0f,
-		1.0f, 1.0f,          0.0f, 0.0f, 1.0f,
-	};
 
 	void* data;
 	vkMapMemory(v->logical_device, staging_memory, 0, size, 0, &data);
 	memcpy(data, vertices, size);
 	vkUnmapMemory(v->logical_device, staging_memory);
-	create_buffer(v, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &v->vertex_buffer, &v->vertex_buffer_memory);
+	create_buffer(v, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer, memory);
 
-	copy_buffer(v, staging_buffer, v->vertex_buffer, size);
+	copy_buffer(v, staging_buffer, *buffer, size);
 
     vkDestroyBuffer(v->logical_device, staging_buffer, NULL);
     vkFreeMemory(v->logical_device, staging_memory, NULL);
 }
 
-void create_index_buffer(Vulkan* v){
+void create_index_buffer(Vulkan* v, uint32_t* indices, uint32_t numIndices, VkBuffer* buffer, VkDeviceMemory* memory){
 	VkBuffer staging_buffer;
 	VkDeviceMemory staging_memory;
-	VkDeviceSize size = sizeof(uint16_t) * 3;
+	VkDeviceSize size = numIndices * sizeof(uint32_t);
 	create_buffer(v, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer, &staging_memory);
 
 	// Uploading the data
-	uint16_t indices[] = {
-		0, 1, 2
-	};
 	void* data;
     vkMapMemory(v->logical_device, staging_memory, 0, size, 0, &data);
     memcpy(data, indices, size);
     vkUnmapMemory(v->logical_device, staging_memory);
 
-	create_buffer(v, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &v->index_buffer, &v->index_buffer_memory);
+	create_buffer(v, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer, memory);
 
-	copy_buffer(v, staging_buffer, v->index_buffer, size);
+	copy_buffer(v, staging_buffer, *buffer, size);
 
 	vkDestroyBuffer(v->logical_device, staging_buffer, NULL);
 	vkFreeMemory(v->logical_device, staging_memory, NULL);
@@ -166,6 +172,14 @@ void create_window(Vulkan* v){
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	v->window = glfwCreateWindow(800, 600, "Our Vulkan Window", NULL, NULL);
+}
+
+GPUMesh create_mesh(Vulkan* v, MeshData* mesh){
+    GPUMesh m;
+    create_vertex_buffer(v, mesh->vertices, mesh->numVertices, &m.vertexBuffer, &m.vertexMemory);
+    create_index_buffer(v, mesh->indices, mesh->numIndices, &m.indexBuffer, &m.indexMemory);
+    m.numIndices = mesh->numIndices;
+    return m;
 }
 
 VkShaderModule createShaderModule(const VkDevice* device, file_buffer buffer) {
@@ -217,7 +231,7 @@ void create_graphics_pipeline(Vulkan* v){
 	VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
 	VkVertexInputBindingDescription binding_description;
-	binding_description.stride = sizeof(float) * 5;
+	binding_description.stride = sizeof(Vertex);
 	binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 	binding_description.binding = 0;
 
@@ -225,12 +239,12 @@ void create_graphics_pipeline(Vulkan* v){
 	bindings[0].offset = 0;
 	bindings[0].location = 0;
 	bindings[0].binding = 0;
-	bindings[0].format = VK_FORMAT_R32G32_SFLOAT;
+	bindings[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 
-	bindings[1].offset = sizeof(float) * 2;
+	bindings[1].offset = sizeof(float) * 3;
 	bindings[1].location = 1;
 	bindings[1].binding = 0;
-	bindings[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+	bindings[1].format = VK_FORMAT_R32G32_SFLOAT;
 	
 	// Describing the vertex data
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo;
@@ -445,7 +459,49 @@ void update_uniform_buffer(Vulkan* v, uint32_t imageIndex){
 	vkUnmapMemory(v->logical_device, v->uniform_buffers_memory[v->current_frame]);
 }
 
-void draw_frame(Vulkan* v){
+void update_command_buffer(Vulkan* v, uint32_t imageIndex, GPUMesh* meshes, uint32_t numMeshes){
+    VkCommandBufferBeginInfo beginInfo;
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = 0; // Optional
+    beginInfo.pInheritanceInfo = NULL; // Optional
+    beginInfo.pNext = NULL;
+
+    if (vkBeginCommandBuffer(v->command_buffers[imageIndex], &beginInfo) != VK_SUCCESS) {
+        err("Failed to begin recording command buffer");
+    }
+
+    VkRenderPassBeginInfo renderPassInfo;
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = v->render_pass;
+    renderPassInfo.framebuffer = v->framebuffers[imageIndex];
+    renderPassInfo.renderArea.offset.x = 0;
+    renderPassInfo.renderArea.offset.y = 0;
+    renderPassInfo.renderArea.extent = v->capabilities.currentExtent;
+    VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+    renderPassInfo.clearValueCount = 1;
+    renderPassInfo.pClearValues = &clearColor;
+    renderPassInfo.pNext = NULL;
+
+    vkCmdBeginRenderPass(v->command_buffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    vkCmdBindPipeline(v->command_buffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, v->graphics_pipeline);
+    
+    VkDeviceSize offset = {0};
+    
+    for(uint32_t i = 0; i < numMeshes; i++){
+        vkCmdBindVertexBuffers(v->command_buffers[imageIndex], 0, 1, &meshes[i].vertexBuffer, &offset);
+        vkCmdBindIndexBuffer(v->command_buffers[imageIndex], meshes[i].indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdDrawIndexed(v->command_buffers[imageIndex], meshes[i].numIndices, 1, 0, 0, 0);
+    }
+
+    vkCmdEndRenderPass(v->command_buffers[imageIndex]);
+
+    if (vkEndCommandBuffer(v->command_buffers[imageIndex]) != VK_SUCCESS) {
+        err("Failed to record command buffer");
+    }
+}
+
+void draw_frame(Vulkan* v, GPUMesh* meshes, uint32_t meshCount){
 	vkWaitForFences(v->logical_device, 1, &v->in_flight_fences[v->current_frame], VK_TRUE, UINT64_MAX);
 	vkResetFences(v->logical_device, 1, &v->in_flight_fences[v->current_frame]);
 	
@@ -457,6 +513,7 @@ void draw_frame(Vulkan* v){
 	}
 
 	update_uniform_buffer(v, imageIndex);
+    update_command_buffer(v, imageIndex, meshes, meshCount);
 
 	VkSubmitInfo submitInfo;
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -479,8 +536,11 @@ void draw_frame(Vulkan* v){
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = &v->render_finished_semaphores[v->current_frame];
 	presentInfo.swapchainCount = 1;
+
+    // Try to condense this
 	VkSwapchainKHR swapChains[] = {v->swapchain};
 	presentInfo.pSwapchains = swapChains;
+
 	presentInfo.pImageIndices = &imageIndex;
 	presentInfo.pResults = NULL;
 	presentInfo.pNext = NULL;
@@ -756,7 +816,7 @@ void create_command_pool(Vulkan* v){
 	VkCommandPoolCreateInfo poolInfo;
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.queueFamilyIndex = v->graphics_queue_index;
-	poolInfo.flags = 0; // Optional
+	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // Optional
 	poolInfo.pNext = NULL;
 
 	if (vkCreateCommandPool(v->logical_device, &poolInfo, NULL, &v->command_pool) != VK_SUCCESS) {
@@ -777,52 +837,9 @@ void create_command_buffers(Vulkan* v) {
 	if (vkAllocateCommandBuffers(v->logical_device, &allocInfo, v->command_buffers) != VK_SUCCESS) {
 		err("Failed to allocate command buffer");
 	}
-
-	// Recording data into the command buffers
-	for (size_t i = 0; i < v->num_image_views; i++) {
-		VkCommandBufferBeginInfo beginInfo;
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = 0; // Optional
-		beginInfo.pInheritanceInfo = NULL; // Optional
-		beginInfo.pNext = NULL;
-
-		if (vkBeginCommandBuffer(v->command_buffers[i], &beginInfo) != VK_SUCCESS) {
-			err("Failed to begin recording command buffer");
-		}
-
-		VkRenderPassBeginInfo renderPassInfo;
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = v->render_pass;
-		renderPassInfo.framebuffer = v->framebuffers[i];
-		renderPassInfo.renderArea.offset.x = 0;
-		renderPassInfo.renderArea.offset.y = 0;
-		renderPassInfo.renderArea.extent = v->capabilities.currentExtent;
-		VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-		renderPassInfo.clearValueCount = 1;
-		renderPassInfo.pClearValues = &clearColor;
-		renderPassInfo.pNext = NULL;
-
-		vkCmdBeginRenderPass(v->command_buffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-		vkCmdBindPipeline(v->command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, v->graphics_pipeline);
-		
-		VkDeviceSize offset = {0};
-		
-		vkCmdBindVertexBuffers(v->command_buffers[i], 0, 1, &v->vertex_buffer, &offset);
-
-		vkCmdBindIndexBuffer(v->command_buffers[i], v->index_buffer, 0, VK_INDEX_TYPE_UINT16);
-
-		vkCmdDrawIndexed(v->command_buffers[i], 3, 1, 0, 0, 0);
-
-		vkCmdEndRenderPass(v->command_buffers[i]);
-
-		if (vkEndCommandBuffer(v->command_buffers[i]) != VK_SUCCESS) {
-			err("Failed to record command buffer");
-		}
-	}
 }
 
-void destroy_vulkan(Vulkan* v){
+void destroy_vulkan(Vulkan* v, GPUMesh* mesh, uint32_t meshCount){
 	for (size_t i = 0; i < v->num_image_views; i++) {
         vkDestroyBuffer(v->logical_device, v->uniform_buffers[i], NULL);
         vkFreeMemory(v->logical_device, v->uniform_buffers_memory[i], NULL);
@@ -830,13 +847,15 @@ void destroy_vulkan(Vulkan* v){
 
 	vkDeviceWaitIdle(v->logical_device);
 
+    for(uint32_t i = 0; i < meshCount; i++){
+        vkDestroyBuffer(v->logical_device, mesh[i].vertexBuffer, NULL);
+        vkFreeMemory(v->logical_device, mesh[i].vertexMemory, NULL);
+        
+        vkDestroyBuffer(v->logical_device, mesh[i].indexBuffer, NULL);
+        vkFreeMemory(v->logical_device, mesh[i].indexMemory, NULL);
+    }
+
 	vkDestroyDescriptorSetLayout(v->logical_device, v->descriptor_layout, NULL);
-
-	vkDestroyBuffer(v->logical_device, v->index_buffer, NULL);
-	vkFreeMemory(v->logical_device, v->index_buffer_memory, NULL);
-
-	vkDestroyBuffer(v->logical_device, v->vertex_buffer, NULL);
-	vkFreeMemory(v->logical_device, v->vertex_buffer_memory, NULL);
 
 	for (int i = 0; i < v->num_image_views; i++) {
 		vkDestroyFramebuffer(v->logical_device, v->framebuffers[i], NULL);

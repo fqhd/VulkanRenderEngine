@@ -11,6 +11,29 @@
 #include <cglm/cglm.h>
 
 typedef struct {
+    float x, y, z, u, v;
+} Vertex;
+
+typedef struct {
+    uint32_t* indices;
+    uint32_t numIndices;
+    uint32_t numVertices;
+    Vertex* vertices;
+} MeshData;
+
+typedef struct {
+    VkBuffer vertexBuffer;
+    VkBuffer indexBuffer;
+    VkDeviceMemory vertexMemory;
+    VkDeviceMemory indexMemory;
+    uint32_t numIndices;
+} GPUMesh;
+
+typedef struct {
+    VkCommandBuffer* commandBuffers;
+} CommandBuffer;
+
+typedef struct {
 	mat4 model;
 	mat4 view;
 	mat4 projection;
@@ -38,39 +61,17 @@ typedef struct {
 	VkSemaphore* render_finished_semaphores;
 	VkFence* in_flight_fences;
 	int current_frame;
-	VkBuffer vertex_buffer;
-	VkDeviceMemory vertex_buffer_memory;
-	VkBuffer index_buffer;
-	VkDeviceMemory index_buffer_memory;
 	VkDescriptorSetLayout descriptor_layout;
 	VkBuffer* uniform_buffers;
 	VkDeviceMemory* uniform_buffers_memory;
 	MVP mvp;
 } Vulkan;
 
-void create_window(Vulkan* v);
-void pick_physical_device(Vulkan* v);
-void get_graphics_queue_family_index(Vulkan* v);
-void create_logical_device(Vulkan* v);
-void create_instance(Vulkan* v, uint8_t validation_layers);
-void create_swapchain(Vulkan* v);
-void create_image_views(Vulkan* v);
-void create_render_pass(Vulkan* v);
-void create_graphics_pipeline(Vulkan* v);
-void create_framebuffers(Vulkan* v);
-void create_command_pool(Vulkan* v);
-void create_command_buffers(Vulkan* v);
-void create_sync_objects(Vulkan* v);
-void destroy_vulkan(Vulkan* v);
-void recreate_swapchain(Vulkan* v);
-void draw_frame(Vulkan* v);
-void cleanup_swapchain(Vulkan* v);
-void create_vertex_buffer(Vulkan* v);
-void create_index_buffer(Vulkan* v);
+
+void destroy_vulkan(Vulkan* v, GPUMesh* mesh, uint32_t meshCount);
+void draw_frame(Vulkan* v, GPUMesh* meshes, uint32_t meshCount);
+GPUMesh create_mesh(Vulkan* vulkan, MeshData* mesh);
 void init_vulkan(Vulkan* v);
-void create_descriptor_layout(Vulkan* v);
 void create_uniform_buffers(Vulkan* v);
-void create_buffer(Vulkan* v, VkDeviceSize size, VkBufferUsageFlags usage_flags, uint32_t memory_flags, VkBuffer* buffer, VkDeviceMemory* memory);
-void copy_buffer(Vulkan* v, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
 #endif

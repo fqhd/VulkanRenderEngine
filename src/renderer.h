@@ -5,6 +5,7 @@
 
 typedef struct {
 	Vulkan vulkan;
+    GPUMesh mesh;
 } Renderer;
 
 void init_renderer(Renderer* renderer);
