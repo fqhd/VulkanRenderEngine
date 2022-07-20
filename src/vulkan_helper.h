@@ -8,7 +8,9 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include "utils.h"
+#define GLM_FORCE_RADIANS
 #include <cglm/cglm.h>
+#include <cglm/mat4.h>
 
 typedef struct {
     float x, y, z, u, v;
@@ -37,7 +39,7 @@ typedef struct {
 	mat4 model;
 	mat4 view;
 	mat4 projection;
-} MVP;
+} UBO;
 
 typedef struct {
 	GLFWwindow* window;
@@ -64,7 +66,9 @@ typedef struct {
 	VkDescriptorSetLayout descriptor_layout;
 	VkBuffer* uniform_buffers;
 	VkDeviceMemory* uniform_buffers_memory;
-	MVP mvp;
+    VkDescriptorPool descriptorPool;
+    VkDescriptorSet* descriptor_sets;
+	UBO ubo;
 } Vulkan;
 
 
