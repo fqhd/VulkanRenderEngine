@@ -23,6 +23,7 @@ void create_vertex_buffer(Vulkan *v, Vertex *vertices, uint32_t numVertices, VkB
 void create_index_buffer(Vulkan *v, uint32_t *indices, uint32_t numIndices, VkBuffer *buffer, VkDeviceMemory *memory);
 void create_buffer(Vulkan *v, VkDeviceSize size, VkBufferUsageFlags usage_flags, uint32_t memory_flags, VkBuffer *buffer, VkDeviceMemory *memory);
 void copy_buffer(Vulkan *v, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+void update_uniform_buffer(Vulkan *v, uint32_t imageIndex);
 
 void init_vulkan(Vulkan *v)
 {
@@ -48,7 +49,7 @@ void init_vulkan(Vulkan *v)
 
 void create_uniform_buffers(Vulkan *v)
 {
-    VkDeviceSize bufferSize = sizeof(UBO);
+    VkDeviceSize bufferSize = sizeof(float) * 3;
 
     v->uniform_buffers = malloc(v->num_image_views * sizeof(VkBuffer));
     v->uniform_buffers_memory = malloc(v->num_image_views * sizeof(VkDeviceMemory));
@@ -56,6 +57,7 @@ void create_uniform_buffers(Vulkan *v)
     for (size_t i = 0; i < v->num_image_views; i++)
     {
         create_buffer(v, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, v->uniform_buffers + i, v->uniform_buffers_memory + i);
+        update_uniform_buffer(v, i);
     }
 }
 
@@ -202,7 +204,7 @@ void create_descriptor_sets(Vulkan *v)
         VkDescriptorBufferInfo bufferInfo = {0};
         bufferInfo.buffer = v->uniform_buffers[i];
         bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(UBO);
+        bufferInfo.range = sizeof(float) * 3;
         VkWriteDescriptorSet descriptorWrite = {0};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.dstSet = v->descriptor_sets[i];
@@ -525,19 +527,22 @@ void get_graphics_queue_family_index(Vulkan *v)
 
 void update_uniform_buffer(Vulkan *v, uint32_t imageIndex)
 {
-    glm_perspective(degreesToRadians(45.0f), v->capabilities.currentExtent.width / (float)v->capabilities.currentExtent.height, 0.1f, 10.0f, v->ubo.projection);
+    // glm_perspective(degreesToRadians(70.0f), v->capabilities.currentExtent.width / (float)v->capabilities.currentExtent.height, 0.1f, 10.0f, v->ubo.projection);
 
-    float eye[] = {2.0f, 2.0f, 2.0f};
-    float center[] = {0.0f, 0.0f, 0.0f};
-    float up[] = {0.0f, 0.0f, 1.0f};
-    glm_lookat(eye, center, up, v->ubo.view);
-    glm_mat4_identity(v->ubo.model);
-    v->ubo.projection[1][1] *= -1;
+    // float eye[] = {2.0f, 2.0f, 2.0f};
+    // float center[] = {0.0f, 0.0f, 0.0f};
+    // float up[] = {0.0f, 0.0f, 1.0f};
+    // glm_lookat(eye, center, up, v->ubo.view);
+    // glm_mat4_identity(v->ubo.model);
+    // v->ubo.projection[1][1] *= -1;
+    float color[] = {
+        0.0f, 1.0f, 0.0f
+    };
 
     void *data;
-    vkMapMemory(v->logical_device, v->uniform_buffers_memory[v->current_frame], 0, sizeof(v->ubo), 0, &data);
-    memcpy(data, &v->uniform_buffers_memory[v->current_frame], sizeof(v->ubo));
-    vkUnmapMemory(v->logical_device, v->uniform_buffers_memory[v->current_frame]);
+    vkMapMemory(v->logical_device, v->uniform_buffers_memory[imageIndex], 0, sizeof(color), 0, &data);
+    memcpy(data, &v->uniform_buffers_memory[imageIndex], sizeof(color));
+    vkUnmapMemory(v->logical_device, v->uniform_buffers_memory[imageIndex]);
 }
 
 void update_command_buffer(Vulkan *v, uint32_t imageIndex, GPUMesh *meshes, uint32_t numMeshes)
@@ -600,7 +605,7 @@ void draw_frame(Vulkan *v, GPUMesh *meshes, uint32_t meshCount)
         err("Failed to aquire swapchain image");
     }
 
-    update_uniform_buffer(v, imageIndex);
+    // update_uniform_buffer(v, imageIndex);
     update_command_buffer(v, imageIndex, meshes, meshCount);
 
     VkSubmitInfo submitInfo;
