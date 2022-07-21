@@ -1,29 +1,30 @@
 #include "vulkan_helper.h"
 #include <cglm/mat4.h>
 #include <time.h>
-#define degreesToRadians(x) x*(3.141592f/180.0f)
+#define degreesToRadians(x) x *(3.141592f / 180.0f)
 
 void create_instance(Vulkan *v, uint8_t validation_layers);
 void pick_physical_device(Vulkan *v);
 void get_graphics_queue_family_index(Vulkan *v);
-void create_graphics_pipeline(Vulkan *v);
+void create_graphics_pipeline(Vulkan *v, GraphicsPipeline *pipeline);
 void create_logical_device(Vulkan *v);
 void create_swapchain(Vulkan *v);
 void create_image_views(Vulkan *v);
-void create_render_pass(Vulkan *v);
-void create_descriptor_layout(Vulkan *v);
+void create_render_pass(Vulkan *v, GraphicsPipeline *pipeline);
+void create_descriptor_layout(Vulkan *v, GraphicsPipeline *pipeline);
 void create_descriptor_pool(Vulkan *v);
-void create_framebuffers(Vulkan *v);
+void create_framebuffers(Vulkan *v, GraphicsPipeline *pipeline);
 void create_command_pool(Vulkan *v);
 void create_command_buffers(Vulkan *v);
 void create_sync_objects(Vulkan *v);
-void create_descriptor_sets(Vulkan *v);
+void create_descriptor_sets(Vulkan *v, GraphicsPipeline *pipeline);
 void create_window(Vulkan *v);
 void create_vertex_buffer(Vulkan *v, Vertex *vertices, uint32_t numVertices, VkBuffer *buffer, VkDeviceMemory *memory);
 void create_index_buffer(Vulkan *v, uint32_t *indices, uint32_t numIndices, VkBuffer *buffer, VkDeviceMemory *memory);
 void create_buffer(Vulkan *v, VkDeviceSize size, VkBufferUsageFlags usage_flags, uint32_t memory_flags, VkBuffer *buffer, VkDeviceMemory *memory);
 void copy_buffer(Vulkan *v, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-void update_uniform_buffer(Vulkan *v, uint32_t imageIndex);
+void update_uniform_buffer(Vulkan *v, uint32_t imageIndex, GraphicsPipeline *pipeline);
+void create_uniform_buffers(Vulkan *v, GraphicsPipeline *pipeline);
 
 void init_vulkan(Vulkan *v)
 {
@@ -35,29 +36,25 @@ void init_vulkan(Vulkan *v)
     glfwCreateWindowSurface(v->instance, v->window, NULL, &v->surface);
     create_swapchain(v);
     create_image_views(v);
-    create_render_pass(v);
-    create_uniform_buffers(v);
-    create_descriptor_layout(v);
     create_descriptor_pool(v);
-    create_descriptor_sets(v);
-    create_graphics_pipeline(v);
-    create_framebuffers(v);
+    create_graphics_pipeline(v, &v->pipeline);
+    create_framebuffers(v, &v->pipeline);
     create_command_pool(v);
     create_command_buffers(v);
     create_sync_objects(v);
 }
 
-void create_uniform_buffers(Vulkan *v)
+void create_uniform_buffers(Vulkan *v, GraphicsPipeline *pipeline)
 {
     VkDeviceSize bufferSize = sizeof(float) * 3;
 
-    v->uniform_buffers = malloc(v->num_image_views * sizeof(VkBuffer));
-    v->uniform_buffers_memory = malloc(v->num_image_views * sizeof(VkDeviceMemory));
+    pipeline->uniform_buffers = malloc(v->num_image_views * sizeof(VkBuffer));
+    pipeline->uniform_buffers_memory = malloc(v->num_image_views * sizeof(VkDeviceMemory));
 
     for (size_t i = 0; i < v->num_image_views; i++)
     {
-        create_buffer(v, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, v->uniform_buffers + i, v->uniform_buffers_memory + i);
-        update_uniform_buffer(v, i);
+        create_buffer(v, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, pipeline->uniform_buffers + i, pipeline->uniform_buffers_memory + i);
+        update_uniform_buffer(v, i, pipeline);
     }
 }
 
@@ -181,20 +178,20 @@ void create_vertex_buffer(Vulkan *v, Vertex *vertices, uint32_t numVertices, VkB
     vkFreeMemory(v->logical_device, staging_memory, NULL);
 }
 
-void create_descriptor_sets(Vulkan *v)
+void create_descriptor_sets(Vulkan *v, GraphicsPipeline *pipeline)
 {
     VkDescriptorSetAllocateInfo allocInfo = {0};
     VkDescriptorSetLayout layouts[] = {
-        v->descriptor_layout,
-        v->descriptor_layout,
-        v->descriptor_layout,
+        pipeline->descriptor_layout,
+        pipeline->descriptor_layout,
+        pipeline->descriptor_layout,
     };
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = v->descriptorPool;
     allocInfo.descriptorSetCount = v->num_image_views;
     allocInfo.pSetLayouts = layouts;
-    v->descriptor_sets = malloc(sizeof(VkDescriptorSet) * v->num_image_views);
-    if (vkAllocateDescriptorSets(v->logical_device, &allocInfo, v->descriptor_sets) != VK_SUCCESS)
+    pipeline->descriptor_sets = malloc(sizeof(VkDescriptorSet) * v->num_image_views);
+    if (vkAllocateDescriptorSets(v->logical_device, &allocInfo, pipeline->descriptor_sets) != VK_SUCCESS)
     {
         printf("Failed to allocate descriptor sets\n");
     }
@@ -202,12 +199,12 @@ void create_descriptor_sets(Vulkan *v)
     for (size_t i = 0; i < v->num_image_views; i++)
     {
         VkDescriptorBufferInfo bufferInfo = {0};
-        bufferInfo.buffer = v->uniform_buffers[i];
+        bufferInfo.buffer = pipeline->uniform_buffers[i];
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(float) * 3;
         VkWriteDescriptorSet descriptorWrite = {0};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = v->descriptor_sets[i];
+        descriptorWrite.dstSet = pipeline->descriptor_sets[i];
         descriptorWrite.dstBinding = 0;
         descriptorWrite.dstArrayElement = 0;
         descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -280,8 +277,13 @@ VkShaderModule createShaderModule(const VkDevice *device, file_buffer buffer)
     return shaderModule;
 }
 
-void create_graphics_pipeline(Vulkan *v)
+void create_graphics_pipeline(Vulkan *v, GraphicsPipeline *pipeline)
 {
+    create_render_pass(v, pipeline);
+    create_descriptor_layout(v, pipeline);
+    create_uniform_buffers(v, pipeline);
+    create_descriptor_sets(v, pipeline);
+
     file_buffer vertShaderData = read_file("res/vert.spv");
     file_buffer fragShaderData = read_file("res/frag.spv");
 
@@ -424,14 +426,14 @@ void create_graphics_pipeline(Vulkan *v)
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo;
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 1;                  // Optional
-    pipelineLayoutInfo.pSetLayouts = &v->descriptor_layout; // Optional
-    pipelineLayoutInfo.pushConstantRangeCount = 0;          // Optional
-    pipelineLayoutInfo.pPushConstantRanges = NULL;          // Optional
-    pipelineLayoutInfo.pNext = NULL;                        // Optional
-    pipelineLayoutInfo.flags = 0;                           // Optional
+    pipelineLayoutInfo.setLayoutCount = 1;                         // Optional
+    pipelineLayoutInfo.pSetLayouts = &pipeline->descriptor_layout; // Optional
+    pipelineLayoutInfo.pushConstantRangeCount = 0;                 // Optional
+    pipelineLayoutInfo.pPushConstantRanges = NULL;                 // Optional
+    pipelineLayoutInfo.pNext = NULL;                               // Optional
+    pipelineLayoutInfo.flags = 0;                                  // Optional
 
-    if (vkCreatePipelineLayout(v->logical_device, &pipelineLayoutInfo, NULL, &v->pipeline_layout) != VK_SUCCESS)
+    if (vkCreatePipelineLayout(v->logical_device, &pipelineLayoutInfo, NULL, &pipeline->pipeline_layout) != VK_SUCCESS)
     {
         err("Failed to create pipeline layout");
     }
@@ -448,8 +450,8 @@ void create_graphics_pipeline(Vulkan *v)
     pipelineInfo.pDepthStencilState = NULL; // Optional
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDynamicState = NULL; // Optional
-    pipelineInfo.layout = v->pipeline_layout;
-    pipelineInfo.renderPass = v->render_pass;
+    pipelineInfo.layout = pipeline->pipeline_layout;
+    pipelineInfo.renderPass = pipeline->render_pass;
     pipelineInfo.subpass = 0;
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
     pipelineInfo.basePipelineIndex = -1;              // Optional
@@ -457,7 +459,7 @@ void create_graphics_pipeline(Vulkan *v)
     pipelineInfo.flags = 0;
 
     // Finally creating the actual pipeline
-    if (vkCreateGraphicsPipelines(v->logical_device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &v->graphics_pipeline) != VK_SUCCESS)
+    if (vkCreateGraphicsPipelines(v->logical_device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &pipeline->graphics_pipeline) != VK_SUCCESS)
     {
         err("Failed to create graphics pipeline");
     }
@@ -467,7 +469,7 @@ void create_graphics_pipeline(Vulkan *v)
     vkDestroyShaderModule(v->logical_device, vertShaderModule, NULL);
 }
 
-void create_descriptor_layout(Vulkan *v)
+void create_descriptor_layout(Vulkan *v, GraphicsPipeline *pipeline)
 {
     VkDescriptorSetLayoutBinding uboLayoutBinding = {0};
     uboLayoutBinding.binding = 0;
@@ -481,7 +483,7 @@ void create_descriptor_layout(Vulkan *v)
     layoutInfo.bindingCount = 1;
     layoutInfo.pBindings = &uboLayoutBinding;
 
-    if (vkCreateDescriptorSetLayout(v->logical_device, &layoutInfo, NULL, &v->descriptor_layout) != VK_SUCCESS)
+    if (vkCreateDescriptorSetLayout(v->logical_device, &layoutInfo, NULL, &pipeline->descriptor_layout) != VK_SUCCESS)
     {
         err("Failed to create descriptor layout object");
     }
@@ -525,7 +527,7 @@ void get_graphics_queue_family_index(Vulkan *v)
     free(queue_families);
 }
 
-void update_uniform_buffer(Vulkan *v, uint32_t imageIndex)
+void update_uniform_buffer(Vulkan *v, uint32_t imageIndex, GraphicsPipeline *pipeline)
 {
     // glm_perspective(degreesToRadians(70.0f), v->capabilities.currentExtent.width / (float)v->capabilities.currentExtent.height, 0.1f, 10.0f, v->ubo.projection);
 
@@ -536,13 +538,12 @@ void update_uniform_buffer(Vulkan *v, uint32_t imageIndex)
     // glm_mat4_identity(v->ubo.model);
     // v->ubo.projection[1][1] *= -1;
     float color[] = {
-        1.0f, 0.6f, 0.0f
-    };
+        1.0f, 0.6f, 0.0f};
 
     void *data;
-    vkMapMemory(v->logical_device, v->uniform_buffers_memory[imageIndex], 0, sizeof(color), 0, &data);
+    vkMapMemory(v->logical_device, pipeline->uniform_buffers_memory[imageIndex], 0, sizeof(color), 0, &data);
     memcpy(data, color, sizeof(color));
-    vkUnmapMemory(v->logical_device, v->uniform_buffers_memory[imageIndex]);
+    vkUnmapMemory(v->logical_device, pipeline->uniform_buffers_memory[imageIndex]);
 }
 
 void update_command_buffer(Vulkan *v, uint32_t imageIndex, GPUMesh *meshes, uint32_t numMeshes)
@@ -560,7 +561,7 @@ void update_command_buffer(Vulkan *v, uint32_t imageIndex, GPUMesh *meshes, uint
 
     VkRenderPassBeginInfo renderPassInfo;
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.renderPass = v->render_pass;
+    renderPassInfo.renderPass = v->pipeline.render_pass;
     renderPassInfo.framebuffer = v->framebuffers[imageIndex];
     renderPassInfo.renderArea.offset.x = 0;
     renderPassInfo.renderArea.offset.y = 0;
@@ -572,7 +573,7 @@ void update_command_buffer(Vulkan *v, uint32_t imageIndex, GPUMesh *meshes, uint
 
     vkCmdBeginRenderPass(v->command_buffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdBindPipeline(v->command_buffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, v->graphics_pipeline);
+    vkCmdBindPipeline(v->command_buffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, v->pipeline.graphics_pipeline);
 
     VkDeviceSize offset = {0};
 
@@ -580,7 +581,7 @@ void update_command_buffer(Vulkan *v, uint32_t imageIndex, GPUMesh *meshes, uint
     {
         vkCmdBindVertexBuffers(v->command_buffers[imageIndex], 0, 1, &meshes[i].vertexBuffer, &offset);
         vkCmdBindIndexBuffer(v->command_buffers[imageIndex], meshes[i].indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-        vkCmdBindDescriptorSets(v->command_buffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, v->pipeline_layout, 0, 1, &v->descriptor_sets[imageIndex], 0, NULL);
+        vkCmdBindDescriptorSets(v->command_buffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, v->pipeline.pipeline_layout, 0, 1, &v->pipeline.descriptor_sets[imageIndex], 0, NULL);
         vkCmdDrawIndexed(v->command_buffers[imageIndex], meshes[i].numIndices, 1, 0, 0, 0);
     }
 
@@ -605,7 +606,6 @@ void draw_frame(Vulkan *v, GPUMesh *meshes, uint32_t meshCount)
         err("Failed to aquire swapchain image");
     }
 
-    // update_uniform_buffer(v, imageIndex);
     update_command_buffer(v, imageIndex, meshes, meshCount);
 
     VkSubmitInfo submitInfo;
@@ -846,7 +846,7 @@ void create_image_views(Vulkan *v)
     free(images);
 }
 
-void create_render_pass(Vulkan *v)
+void create_render_pass(Vulkan *v, GraphicsPipeline *pipeline)
 {
     VkAttachmentDescription colorAttachment;
     colorAttachment.format = VK_FORMAT_B8G8R8A8_SRGB;
@@ -895,13 +895,13 @@ void create_render_pass(Vulkan *v)
     renderPassInfo.pNext = NULL;
     renderPassInfo.flags = 0;
 
-    if (vkCreateRenderPass(v->logical_device, &renderPassInfo, NULL, &v->render_pass) != VK_SUCCESS)
+    if (vkCreateRenderPass(v->logical_device, &renderPassInfo, NULL, &pipeline->render_pass) != VK_SUCCESS)
     {
         err("Failed to create render pass");
     }
 }
 
-void create_framebuffers(Vulkan *v)
+void create_framebuffers(Vulkan *v, GraphicsPipeline *pipeline)
 {
     v->framebuffers = malloc(sizeof(VkFramebuffer) * v->num_image_views);
 
@@ -912,7 +912,7 @@ void create_framebuffers(Vulkan *v)
 
         VkFramebufferCreateInfo framebufferInfo;
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        framebufferInfo.renderPass = v->render_pass;
+        framebufferInfo.renderPass = pipeline->render_pass;
         framebufferInfo.attachmentCount = 1;
         framebufferInfo.pAttachments = attachments;
         framebufferInfo.width = v->capabilities.currentExtent.width;
@@ -959,21 +959,28 @@ void create_command_buffers(Vulkan *v)
     }
 }
 
+void destroy_graphics_pipeline(Vulkan *v, GraphicsPipeline *pipeline)
+{
+    for (size_t i = 0; i < v->num_image_views; i++)
+    {
+        vkDestroyBuffer(v->logical_device, v->pipeline.uniform_buffers[i], NULL);
+        vkFreeMemory(v->logical_device, v->pipeline.uniform_buffers_memory[i], NULL);
+    }
+
+    free(pipeline->descriptor_sets);
+    vkDestroyDescriptorSetLayout(v->logical_device, v->pipeline.descriptor_layout, NULL);
+    vkDestroyRenderPass(v->logical_device, v->pipeline.render_pass, NULL);
+    vkDestroyPipeline(v->logical_device, v->pipeline.graphics_pipeline, NULL);
+    vkDestroyPipelineLayout(v->logical_device, v->pipeline.pipeline_layout, NULL);
+}
+
 void destroy_vulkan(Vulkan *v, GPUMesh *mesh, uint32_t meshCount)
 {
     vkDeviceWaitIdle(v->logical_device);
 
-    for (size_t i = 0; i < v->num_image_views; i++)
-    {
-        vkDestroyBuffer(v->logical_device, v->uniform_buffers[i], NULL);
-        vkFreeMemory(v->logical_device, v->uniform_buffers_memory[i], NULL);
-    }
-
-    free(v->descriptor_sets);
-
     vkDestroyDescriptorPool(v->logical_device, v->descriptorPool, NULL);
 
-    vkDestroyDescriptorSetLayout(v->logical_device, v->descriptor_layout, NULL);
+    destroy_graphics_pipeline(v, &v->pipeline);
 
     for (uint32_t i = 0; i < meshCount; i++)
     {
@@ -990,12 +997,6 @@ void destroy_vulkan(Vulkan *v, GPUMesh *mesh, uint32_t meshCount)
     }
 
     vkDestroyCommandPool(v->logical_device, v->command_pool, NULL);
-
-    vkDestroyRenderPass(v->logical_device, v->render_pass, NULL);
-
-    vkDestroyPipeline(v->logical_device, v->graphics_pipeline, NULL);
-
-    vkDestroyPipelineLayout(v->logical_device, v->pipeline_layout, NULL);
 
     for (int i = 0; i < v->num_image_views; i++)
     {

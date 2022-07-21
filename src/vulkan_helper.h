@@ -36,10 +36,21 @@ typedef struct {
 } CommandBuffer;
 
 typedef struct {
-	mat4 model;
-	mat4 view;
-	mat4 projection;
+	float r;
+    float g;
+    float b;
 } UBO;
+
+typedef struct {
+	VkRenderPass render_pass;
+	VkPipeline graphics_pipeline;
+	VkPipelineLayout pipeline_layout;
+	VkDescriptorSetLayout descriptor_layout;
+    VkDescriptorSet* descriptor_sets;
+	VkBuffer* uniform_buffers;
+	VkDeviceMemory* uniform_buffers_memory;
+	UBO ubo;
+} GraphicsPipeline;
 
 typedef struct {
 	GLFWwindow* window;
@@ -49,26 +60,19 @@ typedef struct {
 	VkSurfaceKHR surface;
 	VkSwapchainKHR swapchain;
 	VkImageView* image_views;
-	VkRenderPass render_pass;
 	VkSurfaceCapabilitiesKHR capabilities;
 	VkFramebuffer* framebuffers;
 	VkCommandPool command_pool;
-	VkPipeline graphics_pipeline;
 	VkCommandBuffer* command_buffers;
-	VkPipelineLayout pipeline_layout;
 	int graphics_queue_index;
 	int num_image_views;
 	VkQueue graphics_queue;
 	VkSemaphore* image_available_semaphores;
 	VkSemaphore* render_finished_semaphores;
 	VkFence* in_flight_fences;
-	int current_frame;
-	VkDescriptorSetLayout descriptor_layout;
-	VkBuffer* uniform_buffers;
-	VkDeviceMemory* uniform_buffers_memory;
     VkDescriptorPool descriptorPool;
-    VkDescriptorSet* descriptor_sets;
-	UBO ubo;
+	int current_frame;
+    GraphicsPipeline pipeline;
 } Vulkan;
 
 
@@ -76,6 +80,5 @@ void destroy_vulkan(Vulkan* v, GPUMesh* mesh, uint32_t meshCount);
 void draw_frame(Vulkan* v, GPUMesh* meshes, uint32_t meshCount);
 GPUMesh create_mesh(Vulkan* vulkan, MeshData* mesh);
 void init_vulkan(Vulkan* v);
-void create_uniform_buffers(Vulkan* v);
 
 #endif
