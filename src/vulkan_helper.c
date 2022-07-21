@@ -536,12 +536,12 @@ void update_uniform_buffer(Vulkan *v, uint32_t imageIndex)
     // glm_mat4_identity(v->ubo.model);
     // v->ubo.projection[1][1] *= -1;
     float color[] = {
-        0.0f, 1.0f, 0.0f
+        1.0f, 0.6f, 0.0f
     };
 
     void *data;
     vkMapMemory(v->logical_device, v->uniform_buffers_memory[imageIndex], 0, sizeof(color), 0, &data);
-    memcpy(data, &v->uniform_buffers_memory[imageIndex], sizeof(color));
+    memcpy(data, color, sizeof(color));
     vkUnmapMemory(v->logical_device, v->uniform_buffers_memory[imageIndex]);
 }
 
