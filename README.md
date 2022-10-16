@@ -1,2 +1,2 @@
 # VulkanRenderEngine
-A vulkan render engine written in C to demonstrate sequential rendering pipeline which includes Deferred Rendering, FXAA, HDR, Bloom, Animation, Particle Rendering, and more.
+A 2D render engine which uses vulkan as a backend
